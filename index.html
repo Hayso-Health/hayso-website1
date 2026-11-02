@@ -632,7 +632,7 @@ form.wait{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;max-width:
 form.wait input{flex:1 1 240px;min-height:52px;border-radius:99px;border:1px solid #E2DEEA;background:#fff;padding:0 20px;font:300 16px 'DM Sans',system-ui,sans-serif;color:var(--ink);outline:none}
 form.wait input:focus{border-color:#A8BCFF;box-shadow:0 0 0 4px rgba(168,188,255,.25)}
 .fine{font-size:13px;color:var(--muted);margin-top:12px}
-.thanks{display:none;margin-top:24px;font-size:17px}
+.thanks{display:none;margin-top:24px;font-size:17px}.thanks .sent{display:block;font-weight:500;font-size:20px;color:var(--ink);margin-bottom:6px}
 form.cform{display:grid;grid-template-columns:1fr;gap:12px;max-width:560px;text-align:left}
 @media (min-width:620px){form.cform{grid-template-columns:1fr 1fr}form.cform .btn,form.cform .wide{grid-column:1/-1}}
 .cf{display:flex;flex-direction:column;gap:6px}.cf label{font-size:14px;font-weight:400;padding-left:6px}
@@ -1295,9 +1295,9 @@ window.haysoAI = function (question, context, answers) {
      Demo requests: POST to Supabase table demo_requests (name, clinic_name, role, email, preferred_time, source)
      + email Sam a clinic_demo_request alert. Never mix the lists. */
   var LISTS = {
-    patients: { audience: 'patient', thanks: function () { return 'Thanks, you’re on the Hayso waitlist. We’ll email you the moment the app is live.'; } },
-    clinics: { audience: 'clinic', thanks: function (d) { return 'Thanks, ' + (d.clinic_name || 'your clinic') + ' is on the clinic waitlist. We’ll be in touch about early access.'; } },
-    demo: { audience: 'clinic_demo', thanks: function (d) { return 'Thanks ' + (d.name || '').split(' ')[0] + ', your demo request is in. We’ll email ' + d.email + ' to confirm a ' + (d.preferred_time || 'time').toLowerCase() + ' slot.'; } }
+    patients: { audience: 'patient', thanks: function () { return 'Thanks, you’re on the Hayso waitlist. Please check your junk folder for your confirmation email. We’ll email you the moment the app is live.'; } },
+    clinics: { audience: 'clinic', thanks: function (d) { return 'Thanks, ' + (d.clinic_name || 'your clinic') + ' is on the clinic waitlist. Please check your junk folder for your confirmation email. We’ll be in touch about early access.'; } },
+    demo: { audience: 'clinic_demo', thanks: function (d) { return 'Thanks ' + (d.name || '').split(' ')[0] + ', your demo request is in. Please check your junk folder for your confirmation email. We’ll email ' + d.email + ' to confirm a ' + (d.preferred_time || 'time').toLowerCase() + ' slot.'; } }
   };
   /* Waitlists go live into the same Supabase table Sam's site used (waitlist_submissions), so nothing is lost.
      utm_medium tells the lists apart: patient-waitlist, clinic-waitlist, demo-request, clinic-not-linked.
@@ -1328,7 +1328,7 @@ window.haysoAI = function (question, context, answers) {
     saveSignup(list, data, CONSENT).then(function () {
       form.style.display = 'none';
       if (btn) { btn.disabled = false; btn.textContent = old; }
-      var th = form.parentNode.querySelector('.thanks'); th.textContent = cfg.thanks(data) + ' '; th.style.display = 'block';
+      var th = form.parentNode.querySelector('.thanks'); th.textContent = ''; var hd = document.createElement('b'); hd.className = 'sent'; hd.textContent = 'Email sent'; th.appendChild(hd); th.appendChild(document.createTextNode(cfg.thanks(data) + ' ')); th.style.display = 'block';
       var fx = document.createElement('button'); fx.type = 'button'; fx.className = 'fix'; fx.textContent = 'Wrong email? Change it';
       fx.onclick = function () { th.style.display = 'none'; form.style.display = ''; var em = form.querySelector('input[type=email]'); if (em) { em.focus(); em.select(); } };
       th.appendChild(fx);
