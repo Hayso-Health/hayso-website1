@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Unsubscribe | Hayso</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&display=swap">
+<style>
+:root{--ink:#18211F;--muted:#5E6967;--petrol:#1F3A38}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px 16px;background:linear-gradient(160deg,#F4F1FA,#EEF3F1);color:var(--ink);font:300 17px/1.55 'DM Sans',system-ui,sans-serif}
+.card{max-width:440px;width:100%;background:rgba(255,255,255,.8);border:1px solid #E2DEEA;border-radius:28px;padding:36px 28px;text-align:center;box-shadow:0 20px 60px rgba(31,58,56,.08)}
+h1{font-weight:400;font-size:28px;margin:0 0 10px;text-wrap:balance}
+p{margin:0 0 22px;color:var(--muted);text-wrap:pretty}
+a.btn{display:inline-block;background:var(--petrol);color:#fff;text-decoration:none;border-radius:99px;padding:13px 26px;font-weight:400}
+</style>
+</head>
+<body>
+<main class="card">
+  <h1 id="h">Unsubscribing…</h1>
+  <p id="m">One moment.</p>
+  <a class="btn" href="/">Back to Hayso</a>
+</main>
+<script>
+(function () {
+  var t = new URLSearchParams(location.search).get('t') || '';
+  var h = document.getElementById('h'), m = document.getElementById('m');
+  function done(ok) {
+    h.textContent = ok ? 'You’re unsubscribed' : 'That didn’t work';
+    m.textContent = ok ? 'We won’t send you any more Hayso news emails.' : 'Please try the link again, or email help@haysohealth.com and we’ll remove you.';
+  }
+  if (!/^[0-9a-f-]{36}$/i.test(t)) return done(false);
+  fetch('https://hjscmvavrlxzxqirrdfb.supabase.co/functions/v1/unsubscribe', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: t })
+  }).then(function (r) { done(r.ok); }).catch(function () { done(false); });
+})();
+</script>
+</body>
+</html>
