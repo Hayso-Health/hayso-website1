@@ -1093,7 +1093,7 @@ h1,h2,h3,h4,.t,.w,b{text-wrap:balance}p,li{text-wrap:pretty}
    The Anthropic key lives in Supabase secrets on the server. NEVER put an Anthropic key in this page.
    Safety stays client-side first: 999/111 and dose/medicine questions are answered here and never sent.
    Any error or 8 second timeout falls back to the built-in answers. */
-window.HAYSO_AI = { endpoint: '', key: '', enabled: false };
+window.HAYSO_AI = { endpoint: 'https://hjscmvavrlxzxqirrdfb.supabase.co/functions/v1/website-guide', key: 'sb_publishable_cbrqyUE_ZhBqKfF0HQCj3Q_wj2rrvfU', enabled: true };
 window.haysoAI = function (question, context, answers) {
   var C = window.HAYSO_AI; if (!C || !C.enabled || !C.endpoint || !window.fetch) return Promise.resolve(null);
   var ctl = window.AbortController ? new AbortController() : null, t = setTimeout(function () { if (ctl) ctl.abort(); }, 8000);
