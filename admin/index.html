@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Hayso Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300..800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<style>
+/* Hayso app management dashboard (15 Nov 2026). Owner-only. Same look as the website and clinic dashboard. */
+:root{--paper:#F3F2EF;--ink:#18211F;--petrol:#1F3A38;--muted:#5E6866;--faint:#9AA3A0;--line:rgba(24,33,31,.09);
+  --blue:#5FB4F0;--lilac:#9C8CF2;--pink:#F29BC0;--good:#2E9C7E;--warn:#C98A2B}
+*{box-sizing:border-box}
+body{margin:0;font-family:'DM Sans',system-ui,-apple-system,sans-serif;color:var(--ink);font-weight:400;line-height:1.45;min-height:100vh;
+  background:radial-gradient(circle at 6% 4%,#D3EEE4 0,rgba(211,238,228,0) 34%),radial-gradient(circle at 96% 8%,#E9DFF8 0,rgba(233,223,248,0) 36%),radial-gradient(circle at 8% 98%,#F7E6D8 0,rgba(247,230,216,0) 34%),var(--paper);background-attachment:fixed}
+.glass{background:rgba(255,255,255,.62);backdrop-filter:blur(22px) saturate(1.4);-webkit-backdrop-filter:blur(22px) saturate(1.4);
+  border:1px solid rgba(255,255,255,.85);border-radius:22px;box-shadow:0 18px 32px -14px rgba(28,52,49,.22),0 2px 6px rgba(28,52,49,.06)}
+h1,h2,h3{margin:0;font-weight:800;letter-spacing:-.02em}
+button,input,select{font:inherit;color:inherit}
+.btn{border:0;border-radius:999px;background:var(--petrol);color:#fff;padding:12px 22px;font-weight:600;cursor:pointer}
+.btn.ghost{background:rgba(255,255,255,.8);color:var(--ink);border:1px solid var(--line)}
+.field{width:100%;padding:13px 16px;border-radius:14px;border:1px solid var(--line);background:rgba(255,255,255,.9);outline:none}
+.field:focus{border-color:var(--lilac)}
+.small{font-size:13px;color:var(--muted)}
+.err{color:var(--ink);background:rgba(242,155,192,.18);border-radius:12px;padding:10px 14px;font-size:14px}
+/* sign in */
+#login{min-height:100vh;display:grid;place-items:center;padding:16px}
+#login .glass{width:100%;max-width:400px;padding:30px}
+.mark{display:flex;align-items:center;gap:10px;font-weight:800;font-size:22px;letter-spacing:-.03em}
+.ring{width:28px;height:28px;border-radius:50%;background:conic-gradient(var(--blue),var(--lilac),var(--pink),var(--blue));
+  -webkit-mask:radial-gradient(circle,transparent 8px,#000 9px);mask:radial-gradient(circle,transparent 8px,#000 9px);filter:drop-shadow(0 0 6px rgba(156,140,242,.55))}
+/* app */
+#app{display:none;min-height:100vh}
+.side{position:fixed;inset:16px auto 16px 16px;width:220px;padding:20px 14px;display:flex;flex-direction:column;gap:4px}
+.side .mark{padding:4px 8px 18px}
+.nav{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:14px;cursor:pointer;border:0;background:none;text-align:left;width:100%}
+.nav:hover{background:rgba(255,255,255,.6)}
+.nav.on{background:#fff;box-shadow:0 6px 16px -8px rgba(28,52,49,.3);font-weight:600}
+.nav .n{margin-left:auto;font-size:12px;background:var(--lilac);color:#fff;border-radius:99px;padding:1px 8px;font-weight:700}
+.side .foot{margin-top:auto;padding:8px}
+main{margin-left:252px;padding:28px 28px 60px;max-width:1240px}
+.top{display:flex;align-items:flex-end;gap:16px;margin-bottom:20px}
+.top h1{font-size:32px}
+.top .small{margin-left:auto}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.kpi{padding:18px 20px}
+.kpi .v{font-size:34px;font-weight:800;letter-spacing:-.03em;margin-top:4px}
+.kpi .s{font-size:13px;color:var(--muted)}
+.panel{padding:20px 22px;margin-top:14px}
+.panel h2{font-size:18px;margin-bottom:12px}
+.grid2{display:grid;grid-template-columns:1.6fr 1fr;gap:14px}
+.chart{display:flex;align-items:flex-end;gap:6px;height:170px;padding-top:10px}
+.bar{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end}
+.bar .b{width:100%;max-width:26px;border-radius:8px 8px 4px 4px;background:linear-gradient(180deg,var(--lilac),var(--blue));min-height:3px}
+.bar .b2{width:60%;max-width:14px;border-radius:6px;background:var(--pink);min-height:0}
+.bar span{font-size:11px;color:var(--faint)}
+.legend{display:flex;gap:16px;font-size:13px;color:var(--muted);margin-top:8px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;font-weight:600;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;padding:8px 10px;border-bottom:1px solid var(--line)}
+td{padding:10px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+.chip{display:inline-block;padding:2px 10px;border-radius:99px;font-size:12px;font-weight:600;background:rgba(24,33,31,.06)}
+.chip.bug{background:rgba(242,155,192,.22)}.chip.idea{background:rgba(95,180,240,.2)}
+.chip.new{background:rgba(156,140,242,.22)}.chip.in_progress{background:rgba(201,138,43,.18)}.chip.fixed{background:rgba(46,156,126,.18)}
+.chip.on{background:var(--petrol);color:#fff}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.tabs button{border:1px solid var(--line);background:rgba(255,255,255,.7);border-radius:99px;padding:7px 14px;cursor:pointer;font-size:14px}
+.tabs button.on{background:var(--petrol);color:#fff;border-color:var(--petrol)}
+.fb{padding:14px 0;border-bottom:1px solid var(--line);display:grid;grid-template-columns:1fr auto;gap:10px}
+.fb:last-child{border-bottom:0}
+.fb p{margin:6px 0 0;font-size:15px}
+.fb select{border:1px solid var(--line);border-radius:10px;padding:6px 8px;background:#fff}
+.chat{padding:14px 0;border-bottom:1px solid var(--line)}
+.chat:last-child{border-bottom:0}
+.q{font-weight:600}
+.a{margin-top:6px;color:var(--muted);font-size:14px;white-space:pre-wrap}
+.empty{padding:30px;text-align:center;color:var(--muted)}
+.row{display:flex;gap:10px;align-items:center}
+@media (max-width:900px){
+  .side{position:static;width:auto;margin:16px;flex-direction:row;flex-wrap:wrap;align-items:center}
+  .side .mark{padding:4px 8px}.side .foot{margin:0 0 0 auto}
+  .nav{width:auto}
+  main{margin:0;padding:8px 16px 40px}
+  .kpis{grid-template-columns:repeat(2,1fr)}.grid2{grid-template-columns:1fr}
+  .wide{overflow-x:auto}
+}
+</style>
+</head>
+<body>
+
+<!-- sign in -->
+<section id="login">
+  <div class="glass">
+    <div class="mark"><div class="ring"></div>hayso <span class="small" style="font-weight:600;margin-left:4px">Admin</span></div>
+    <h1 id="loginTitle" style="font-size:26px;margin:22px 0 4px">Sign in</h1>
+    <p class="small" id="loginSub" style="margin:0 0 18px">App management for the Hayso team.</p>
+    <form id="signin">
+      <input class="field" id="email" type="email" placeholder="Email" autocomplete="username" required>
+      <input class="field" id="pw" type="password" placeholder="Password" autocomplete="current-password" required style="margin-top:10px">
+      <div id="loginErr" class="err" style="display:none;margin-top:12px"></div>
+      <button class="btn" style="width:100%;margin-top:16px" type="submit">Sign in</button>
+      <p style="text-align:center;margin:14px 0 0"><a href="#" id="forgot" class="small">Forgot password?</a></p>
+    </form>
+    <form id="setpw" style="display:none">
+      <input class="field" id="pw1" type="password" placeholder="New password (8+ characters)" autocomplete="new-password" minlength="8" required>
+      <div id="setErr" class="err" style="display:none;margin-top:12px"></div>
+      <button class="btn" style="width:100%;margin-top:16px" type="submit">Save password</button>
+    </form>
+  </div>
+</section>
+
+<!-- dashboard -->
+<section id="app">
+  <aside class="side glass">
+    <div class="mark"><div class="ring"></div>hayso</div>
+    <button class="nav on" data-v="overview">Overview</button>
+    <button class="nav" data-v="users">Users</button>
+    <button class="nav" data-v="subs">Subscribers</button>
+    <button class="nav" data-v="feedback">Feedback <span class="n" id="fbN" style="display:none"></span></button>
+    <button class="nav" data-v="chats">hayso chats</button>
+    <div class="foot"><div class="small" id="who"></div><a href="#" id="signout" class="small">Sign out</a></div>
+  </aside>
+  <main id="main"></main>
+</section>
+
+<script>
+// Publishable key only (safe in a web page). Every read is checked server-side: only emails in app_admins get data.
+const SB = supabase.createClient('https://hjscmvavrlxzxqirrdfb.supabase.co', 'sb_publishable_cbrqyUE_ZhBqKfF0HQCj3Q_wj2rrvfU');
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fmt = (n) => Number(n ?? 0).toLocaleString('en-GB');
+const when = (iso) => iso ? new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '–';
+const ago = (iso) => { if (!iso) return 'Never'; const m = (Date.now() - new Date(iso)) / 60000; return m < 60 ? `${Math.max(1, Math.round(m))} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`; };
+const short = (id) => id ? String(id).slice(0, 8) : '–';
+const PLAN = { none: 'No plan', trial: 'Trial', monthly: 'Monthly', annual: 'Annual', clinic: 'Clinic' };
+let view = 'overview', data = {}, fbFilter = 'new', hideNoise = true, userQ = '';
+
+// ---------- sign in ----------
+function showErr(el, msg) { el.textContent = msg; el.style.display = msg ? 'block' : 'none'; }
+$('#signin').onsubmit = async (e) => {
+  e.preventDefault(); showErr($('#loginErr'), '');
+  const { error } = await SB.auth.signInWithPassword({ email: $('#email').value.trim(), password: $('#pw').value });
+  if (error) return showErr($('#loginErr'), 'That email and password don’t match.');
+  start();
+};
+$('#forgot').onclick = async (e) => {
+  e.preventDefault();
+  const email = $('#email').value.trim();
+  if (!email) return showErr($('#loginErr'), 'Type your email first, then tap Forgot password.');
+  await SB.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
+  showErr($('#loginErr'), 'If that email has access, a reset link is on its way.');
+};
+$('#setpw').onsubmit = async (e) => {
+  e.preventDefault();
+  const { error } = await SB.auth.updateUser({ password: $('#pw1').value });
+  if (error) return showErr($('#setErr'), error.message);
+  history.replaceState(null, '', location.pathname); start();
+};
+$('#signout').onclick = async (e) => { e.preventDefault(); await SB.auth.signOut(); location.reload(); };
+SB.auth.onAuthStateChange((ev) => {
+  if (ev === 'PASSWORD_RECOVERY') {
+    $('#signin').style.display = 'none'; $('#setpw').style.display = 'block';
+    $('#loginTitle').textContent = 'Set your password'; $('#loginSub').textContent = 'Pick a password for the admin dashboard.';
+  }
+});
+
+async function start() {
+  const { data: s } = await SB.auth.getSession();
+  if (!s.session) return;
+  const { data: ok } = await SB.rpc('is_app_admin');
+  if (!ok) { await SB.auth.signOut(); return showErr($('#loginErr'), 'This account doesn’t have admin access.'); }
+  $('#login').style.display = 'none'; $('#app').style.display = 'block';
+  $('#who').textContent = s.session.user.email;
+  await load();
+}
+
+async function load() {
+  const [o, u, f, c] = await Promise.all([SB.rpc('admin_overview'), SB.rpc('admin_users'), SB.rpc('admin_feedback'), SB.rpc('admin_chats')]);
+  data = { o: o.data || {}, users: u.data || [], fb: f.data || [], chats: c.data || [] };
+  const n = data.fb.filter((x) => x.status === 'new' && !noise(x)).length;
+  $('#fbN').textContent = n; $('#fbN').style.display = n ? 'inline-block' : 'none';
+  render();
+}
+const noise = (x) => (x.text || '').trim().length < 12; // test taps like "kxrfkh"
+
+document.querySelectorAll('.nav').forEach((b) => b.onclick = () => {
+  view = b.dataset.v; document.querySelectorAll('.nav').forEach((x) => x.classList.toggle('on', x === b)); render();
+});
+
+// ---------- views ----------
+function head(title, sub) {
+  return `<div class="top"><h1>${title}</h1><span class="small">${sub ?? ''}</span><button class="btn ghost" onclick="load()" style="padding:8px 16px">Refresh</button></div>`;
+}
+function kpi(label, v, s) { return `<div class="kpi glass"><div class="small">${label}</div><div class="v">${v}</div><div class="s">${s ?? ''}</div></div>`; }
+
+function render() {
+  const o = data.o, m = $('#main');
+  if (view === 'overview') {
+    const subs = o.subs || {}, paying = (subs.monthly || 0) + (subs.annual || 0);
+    const days = o.daily || [], max = Math.max(1, ...days.map((d) => d.active), ...days.map((d) => d.signups));
+    const realFb = data.fb.filter((x) => !noise(x));
+    m.innerHTML = head('Overview', 'Updated ' + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })) + `
+      <div class="kpis">
+        ${kpi('Total users', fmt(o.users), `+${fmt(o.users_7d)} this week`)}
+        ${kpi('Active today', fmt(o.active_today), `${fmt(o.active_7d)} this week · ${fmt(o.active_30d)} this month`)}
+        ${kpi('Paying subscribers', fmt(paying), `${fmt(subs.trial || 0)} on trial · ${fmt(subs.clinic || 0)} via clinics`)}
+        ${kpi('New feedback', fmt(realFb.filter((x) => x.status === 'new').length), `${fmt(realFb.length)} in total`)}
+        ${kpi('Finished setup', fmt(o.onboarded), `of ${fmt(o.users)} sign-ups`)}
+        ${kpi('hayso chats', fmt(o.hayso_msgs_7d), `this week · ${fmt(o.hayso_msgs)} in total`)}
+        ${kpi('Linked to a clinic', fmt(o.clinic_linked), 'patients')}
+        ${kpi('Website waitlist', fmt(o.waitlist), `${fmt(o.referrals)} friend invites sent`)}
+      </div>
+      <div class="grid2">
+        <div class="panel glass"><h2>Last 14 days</h2>
+          <div class="chart">${days.map((d) => `<div class="bar" title="${d.day}: ${d.active} active, ${d.signups} sign-ups, ${d.actions} logs">
+            <div class="b" style="height:${(d.active / max) * 130}px"></div><div class="b2" style="height:${(d.signups / max) * 130}px"></div>
+            <span>${new Date(d.day).getDate()}</span></div>`).join('')}</div>
+          <div class="legend"><span><i style="background:var(--lilac)"></i>Active users</span><span><i style="background:var(--pink)"></i>Sign-ups</span></div>
+        </div>
+        <div class="panel glass"><h2>Latest feedback</h2>
+          ${realFb.slice(0, 5).map((x) => `<div style="padding:8px 0;border-bottom:1px solid var(--line)"><span class="chip ${x.type}">${x.type}</span> <span class="small">${when(x.created_at)}</span><div style="margin-top:4px;font-size:14px">${esc(x.text)}</div></div>`).join('') || '<div class="empty">Nothing yet</div>'}
+          <button class="btn ghost" style="margin-top:12px;padding:8px 16px" onclick="go('feedback')">See all</button>
+        </div>
+      </div>`;
+  }
+  if (view === 'users') {
+    const q = userQ.toLowerCase();
+    const rows = data.users.filter((u) => !q || (u.email || '').toLowerCase().includes(q) || u.id.startsWith(q));
+    m.innerHTML = head('Users', `${fmt(data.users.length)} accounts`) + `
+      <input class="field" placeholder="Search by email or user ID" value="${esc(userQ)}" oninput="userQ=this.value;render();this.focus();this.setSelectionRange(this.value.length,this.value.length)" style="max-width:360px">
+      <div class="panel glass wide"><table><thead><tr><th>User</th><th>Joined</th><th>Last active</th><th>Logs this week</th><th>All logs</th><th>Set up</th><th>Plan</th><th>Clinic</th></tr></thead><tbody>
+      ${rows.map((u) => `<tr><td><b>${u.email ? esc(u.email) : 'Guest'}</b><div class="small">${short(u.id)}${u.anonymous ? ' · not signed up yet' : ''}</div></td>
+        <td>${when(u.joined)}</td><td>${ago(u.last_active)}</td><td>${fmt(u.actions_7d)}</td><td>${fmt(u.actions_total)}</td>
+        <td>${u.onboarded ? 'Yes' : 'No'}</td><td><span class="chip">${PLAN[u.subscription] || u.subscription}</span></td><td>${u.clinic ? 'Yes' : '–'}</td></tr>`).join('') || '<tr><td colspan="8" class="empty">No users</td></tr>'}
+      </tbody></table></div>`;
+  }
+  if (view === 'subs') {
+    const subs = o.subs || {}, list = data.users.filter((u) => u.subscription && u.subscription !== 'none');
+    m.innerHTML = head('Subscribers', 'App Store and Google Play payments connect when the paywall goes live') + `
+      <div class="kpis">${kpi('Annual', fmt(subs.annual || 0), '£54.99 a year')}${kpi('Monthly', fmt(subs.monthly || 0), '£9.99 a month')}
+        ${kpi('On trial', fmt(subs.trial || 0), '3-day free trial')}${kpi('Via clinics', fmt(subs.clinic || 0), 'paid by the clinic')}</div>
+      <div class="panel glass wide"><h2>Subscribers</h2><table><thead><tr><th>User</th><th>Plan</th><th>Joined</th><th>Last active</th></tr></thead><tbody>
+      ${list.map((u) => `<tr><td>${u.email ? esc(u.email) : short(u.id)}</td><td><span class="chip">${PLAN[u.subscription]}</span></td><td>${when(u.joined)}</td><td>${ago(u.last_active)}</td></tr>`).join('') || '<tr><td colspan="4" class="empty">No subscribers yet. They show here once payments are live.</td></tr>'}
+      </tbody></table></div>`;
+  }
+  if (view === 'feedback') {
+    const all = data.fb.filter((x) => !hideNoise || !noise(x));
+    const list = all.filter((x) => fbFilter === 'all' || x.status === fbFilter);
+    const count = (s) => all.filter((x) => x.status === s).length;
+    m.innerHTML = head('Feedback', 'From the Test button in the app') + `
+      <div class="tabs">${[['new', 'New'], ['in_progress', 'In progress'], ['fixed', 'Fixed'], ['all', 'All']].map(([k, l]) =>
+        `<button class="${fbFilter === k ? 'on' : ''}" onclick="fbFilter='${k}';render()">${l} ${k === 'all' ? all.length : count(k)}</button>`).join('')}
+        <label class="small row" style="margin-left:auto"><input type="checkbox" ${hideNoise ? 'checked' : ''} onchange="hideNoise=this.checked;render()"> Hide test taps</label></div>
+      <div class="panel glass">${list.map((x) => `<div class="fb"><div><span class="chip ${x.type}">${x.type === 'bug' ? 'Bug' : 'Idea'}</span>
+          <span class="small">${when(x.created_at)}${x.screen ? ' · ' + esc(x.screen) : ''} · user ${short(x.user_id)}</span><p>${esc(x.text)}</p></div>
+          <select onchange="setStatus('${x.id}',this.value)">${[['new', 'New'], ['in_progress', 'In progress'], ['fixed', 'Fixed']].map(([k, l]) => `<option value="${k}" ${x.status === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>`).join('')
+        || '<div class="empty">Nothing here</div>'}</div>`;
+  }
+  if (view === 'chats') {
+    m.innerHTML = head('hayso chats', 'What people ask hayso in the app, newest first') + `
+      <div class="panel glass">${data.chats.map((c) => `<div class="chat"><div class="small">${when(c.created_at)} · user ${short(c.user_id)}${c.route && c.route !== 'allowed' ? ` · <span class="chip">${esc(c.route)}</span>` : ''}</div>
+        <div class="q">${esc(c.message)}</div>${c.reply ? `<div class="a">hayso: ${esc(c.reply)}</div>` : ''}</div>`).join('') || '<div class="empty">No chats yet</div>'}</div>`;
+  }
+}
+function go(v) { document.querySelector(`.nav[data-v="${v}"]`).click(); }
+async function setStatus(id, s) {
+  const { error } = await SB.rpc('admin_set_feedback_status', { feedback_id: id, new_status: s });
+  if (error) { document.querySelector('#main').insertAdjacentHTML('afterbegin', '<div class="err" style="margin-bottom:12px">Could not save that change. Try again.</div>'); return; }
+  const f = data.fb.find((x) => x.id === id); if (f) f.status = s;
+  const n = data.fb.filter((x) => x.status === 'new' && !noise(x)).length; $('#fbN').textContent = n; $('#fbN').style.display = n ? 'inline-block' : 'none';
+  render();
+}
+start();
+</script>
+</body>
+</html>
