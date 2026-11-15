@@ -72,7 +72,7 @@ tr:last-child td{border-bottom:0}
 .fb{padding:14px 0;border-bottom:1px solid var(--line);display:grid;grid-template-columns:1fr auto;gap:10px}
 .fb:last-child{border-bottom:0}
 .fb p{margin:6px 0 0;font-size:15px}
-.fb select{border:1px solid var(--line);border-radius:10px;padding:6px 8px;background:#fff}
+.fb select{border:1px solid var(--line);border-radius:10px;padding:6px 8px;background:#fff;align-self:start}
 .chat{padding:14px 0;border-bottom:1px solid var(--line)}
 .chat:last-child{border-bottom:0}
 .q{font-weight:600}
@@ -120,6 +120,8 @@ tr:last-child td{border-bottom:0}
     <button class="nav" data-v="users">Users</button>
     <button class="nav" data-v="subs">Subscribers</button>
     <button class="nav" data-v="feedback">Feedback <span class="n" id="fbN" style="display:none"></span></button>
+    <button class="nav" data-v="errors">App errors <span class="n" id="erN" style="display:none"></span></button>
+    <button class="nav" data-v="usage">Usage</button>
     <button class="nav" data-v="chats">hayso chats</button>
     <div class="foot"><div class="small" id="who"></div><a href="#" id="signout" class="small">Sign out</a></div>
   </aside>
@@ -136,7 +138,7 @@ const when = (iso) => iso ? new Date(iso).toLocaleString('en-GB', { day: 'numeri
 const ago = (iso) => { if (!iso) return 'Never'; const m = (Date.now() - new Date(iso)) / 60000; return m < 60 ? `${Math.max(1, Math.round(m))} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`; };
 const short = (id) => id ? String(id).slice(0, 8) : '–';
 const PLAN = { none: 'No plan', trial: 'Trial', monthly: 'Monthly', annual: 'Annual', clinic: 'Clinic' };
-let view = 'overview', data = {}, fbFilter = 'new', hideNoise = true, userQ = '';
+let view = 'overview', data = {}, fbFilter = 'new', hideNoise = true, userQ = '', busyAi = {}, errAi = {};
 
 // ---------- sign in ----------
 function showErr(el, msg) { el.textContent = msg; el.style.display = msg ? 'block' : 'none'; }
@@ -178,8 +180,9 @@ async function start() {
 }
 
 async function load() {
-  const [o, u, f, c] = await Promise.all([SB.rpc('admin_overview'), SB.rpc('admin_users'), SB.rpc('admin_feedback'), SB.rpc('admin_chats')]);
-  data = { o: o.data || {}, users: u.data || [], fb: f.data || [], chats: c.data || [] };
+  const [o, u, f, c, er, us] = await Promise.all([SB.rpc('admin_overview'), SB.rpc('admin_users'), SB.rpc('admin_feedback_v2'), SB.rpc('admin_chats'), SB.rpc('admin_errors'), SB.rpc('admin_usage')]);
+  data = { o: o.data || {}, users: u.data || [], fb: f.data || [], chats: c.data || [], errors: er.data || [], usage: us.data || {} };
+  const e7 = data.usage.errors_7d || 0; $('#erN').textContent = e7; $('#erN').style.display = e7 ? 'inline-block' : 'none';
   const n = data.fb.filter((x) => x.status === 'new' && !noise(x)).length;
   $('#fbN').textContent = n; $('#fbN').style.display = n ? 'inline-block' : 'none';
   render();
@@ -210,7 +213,7 @@ function render() {
         ${kpi('New feedback', fmt(realFb.filter((x) => x.status === 'new').length), `${fmt(realFb.length)} in total`)}
         ${kpi('Finished setup', fmt(o.onboarded), `of ${fmt(o.users)} sign-ups`)}
         ${kpi('hayso chats', fmt(o.hayso_msgs_7d), `this week · ${fmt(o.hayso_msgs)} in total`)}
-        ${kpi('Linked to a clinic', fmt(o.clinic_linked), 'patients')}
+        ${kpi('App errors', fmt(data.usage.errors_7d), `this week · ${fmt(data.errors.length)} different ones`)}
         ${kpi('Website waitlist', fmt(o.waitlist), `${fmt(o.referrals)} friend invites sent`)}
       </div>
       <div class="grid2">
@@ -250,20 +253,95 @@ function render() {
     const all = data.fb.filter((x) => !hideNoise || !noise(x));
     const list = all.filter((x) => fbFilter === 'all' || x.status === fbFilter);
     const count = (s) => all.filter((x) => x.status === s).length;
-    m.innerHTML = head('Feedback', 'From the Test button in the app') + `
+    const todo = list.filter((x) => !x.ai && !noise(x)).length;
+    m.innerHTML = head('Feedback', 'From the Test button and from hayso in the app') + `
       <div class="tabs">${[['new', 'New'], ['in_progress', 'In progress'], ['fixed', 'Fixed'], ['all', 'All']].map(([k, l]) =>
         `<button class="${fbFilter === k ? 'on' : ''}" onclick="fbFilter='${k}';render()">${l} ${k === 'all' ? all.length : count(k)}</button>`).join('')}
+        ${todo ? `<button class="on" style="background:linear-gradient(135deg,var(--blue),var(--lilac) 55%,var(--pink));border:0" onclick="analyseAll()">✦ Analyse ${todo} with AI</button>` : ''}
         <label class="small row" style="margin-left:auto"><input type="checkbox" ${hideNoise ? 'checked' : ''} onchange="hideNoise=this.checked;render()"> Hide test taps</label></div>
       <div class="panel glass">${list.map((x) => `<div class="fb"><div><span class="chip ${x.type}">${x.type === 'bug' ? 'Bug' : 'Idea'}</span>
-          <span class="small">${when(x.created_at)}${x.screen ? ' · ' + esc(x.screen) : ''} · user ${short(x.user_id)}</span><p>${esc(x.text)}</p></div>
+          ${x.source === 'hayso' ? '<span class="chip">via hayso</span>' : ''}
+          <span class="small">${when(x.created_at)}${x.screen ? ' · ' + esc(x.screen) : ''} · user ${short(x.user_id)}</span><p>${esc(x.text)}</p>
+          ${aiBlock(x.ai, 'fb-' + x.id)}
+          ${!x.ai && !noise(x) ? `<button class="btn ghost" style="padding:6px 14px;margin-top:8px;font-size:13px" onclick="analyse('${x.id}')">${busyAi[x.id] ? 'Analysing…' : '✦ Analyse with AI'}</button>` : ''}
+          ${ctxBlock(x.context)}</div>
           <select onchange="setStatus('${x.id}',this.value)">${[['new', 'New'], ['in_progress', 'In progress'], ['fixed', 'Fixed']].map(([k, l]) => `<option value="${k}" ${x.status === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>`).join('')
         || '<div class="empty">Nothing here</div>'}</div>`;
+  }
+  if (view === 'errors') {
+    m.innerHTML = head('App errors', 'Real code errors from phones, last 30 days, grouped') + `
+      <div class="panel glass">${data.errors.map((e, i) => `<div class="fb"><div>
+          <span class="chip bug">${fmt(e.count)}×</span> <span class="small">${fmt(e.users)} ${e.users === 1 ? 'person' : 'people'} · ${e.screen ? esc(e.screen) + ' · ' : ''}last ${ago(e.last_at)} · v${esc(e.app_version || '?')}</span>
+          <p style="font-family:ui-monospace,Menlo,monospace;font-size:13px">${esc(e.name)}</p>
+          ${e.sample && e.sample.stack ? `<details><summary class="small" style="cursor:pointer">Stack trace</summary><pre style="white-space:pre-wrap;font-size:11px;color:var(--muted)">${esc(e.sample.stack)}</pre></details>` : ''}
+          ${aiBlock(errAi[i], 'er-' + i)}
+          ${!errAi[i] ? `<button class="btn ghost" style="padding:6px 14px;margin-top:8px;font-size:13px" onclick="analyseError(${i})">${busyAi['e' + i] ? 'Analysing…' : '✦ Analyse with AI'}</button>` : ''}
+        </div></div>`).join('') || '<div class="empty">No errors logged. Errors show here once people on the new version use the app.</div>'}</div>`;
+  }
+  if (view === 'usage') {
+    const u = data.usage, days = u.daily || [], max = Math.max(1, ...days.map((d) => d.screens));
+    m.innerHTML = head('Usage', 'From people with Help improve Hayso on') + `
+      <div class="kpis">${kpi('People tracked', fmt(u.tracked_users_7d), 'this week')}${kpi('Screen views', fmt(days.slice(-7).reduce((a, d) => a + d.screens, 0)), 'this week')}
+        ${kpi('App errors', fmt(u.errors_7d), 'this week')}${kpi('Feedback via hayso', fmt(data.fb.filter((x) => x.source === 'hayso').length), 'all time')}</div>
+      <div class="panel glass"><h2>Screen views, last 14 days</h2>
+        <div class="chart">${days.map((d) => `<div class="bar" title="${d.day}: ${d.screens} views, ${d.errors} errors"><div class="b" style="height:${(d.screens / max) * 130}px"></div><div class="b2" style="height:${Math.min(130, d.errors * 8)}px"></div><span>${new Date(d.day).getDate()}</span></div>`).join('')}</div>
+        <div class="legend"><span><i style="background:var(--lilac)"></i>Screen views</span><span><i style="background:var(--pink)"></i>Errors</span></div></div>
+      <div class="grid2"><div class="panel glass wide"><h2>Top screens (7 days)</h2><table><thead><tr><th>Screen</th><th>Views</th><th>People</th></tr></thead><tbody>
+        ${(u.screens || []).map((r) => `<tr><td>${esc(r.name)}</td><td>${fmt(r.views)}</td><td>${fmt(r.users)}</td></tr>`).join('') || '<tr><td colspan="3" class="empty">No data yet</td></tr>'}</tbody></table></div>
+      <div class="panel glass wide"><h2>Top actions (7 days)</h2><table><thead><tr><th>Action</th><th>Times</th><th>People</th></tr></thead><tbody>
+        ${(u.actions || []).map((r) => `<tr><td>${esc(r.name)}</td><td>${fmt(r.times)}</td><td>${fmt(r.users)}</td></tr>`).join('') || '<tr><td colspan="3" class="empty">No data yet</td></tr>'}</tbody></table></div></div>`;
   }
   if (view === 'chats') {
     m.innerHTML = head('hayso chats', 'What people ask hayso in the app, newest first') + `
       <div class="panel glass">${data.chats.map((c) => `<div class="chat"><div class="small">${when(c.created_at)} · user ${short(c.user_id)}${c.route && c.route !== 'allowed' ? ` · <span class="chip">${esc(c.route)}</span>` : ''}</div>
         <div class="q">${esc(c.message)}</div>${c.reply ? `<div class="a">hayso: ${esc(c.reply)}</div>` : ''}</div>`).join('') || '<div class="empty">No chats yet</div>'}</div>`;
   }
+}
+// AI fix suggestion: plain cause, files, and a paste-ready Claude Code prompt
+function aiBlock(ai, key) {
+  if (!ai) return '';
+  const sev = { high: 'bug', medium: 'in_progress', low: 'fixed' }[ai.severity] || '';
+  return `<div style="margin-top:10px;padding:12px 14px;border-radius:14px;background:rgba(156,140,242,.08);border:1px solid rgba(156,140,242,.25)">
+    <div class="row" style="flex-wrap:wrap"><b>✦ ${esc(ai.title || 'AI suggestion')}</b><span class="chip ${sev}">${esc(ai.severity || '')}</span>
+      <span class="chip">${ai.ota ? 'Fix by update, no new build' : 'Needs a new build'}</span>${ai.kind === 'not_a_bug' ? '<span class="chip">Not a bug</span>' : ''}</div>
+    <div style="margin-top:6px;font-size:14px">${esc(ai.plain)}</div>
+    <div class="small" style="margin-top:4px">${esc(ai.cause)}</div>
+    ${(ai.files || []).length ? `<div class="small" style="margin-top:4px;font-family:ui-monospace,Menlo,monospace">${ai.files.map(esc).join('<br>')}</div>` : ''}
+    <details style="margin-top:8px"><summary class="small" style="cursor:pointer">Claude Code prompt</summary>
+      <pre id="p-${key}" style="white-space:pre-wrap;font-size:12px;background:#fff;border-radius:10px;padding:10px;border:1px solid var(--line)">${esc(ai.prompt)}</pre></details>
+    <button class="btn" style="padding:7px 14px;font-size:13px;margin-top:8px" onclick="copyPrompt('${key}', this)">Copy Claude Code prompt</button></div>`;
+}
+function ctxBlock(c) {
+  if (!c || !c.events) return '';
+  const errs = c.errors || [];
+  return `<details style="margin-top:8px"><summary class="small" style="cursor:pointer">What the app was doing${errs.length ? ` · <b style="color:var(--ink)">${errs.length} error${errs.length > 1 ? 's' : ''}</b>` : ''} · v${esc(c.appVersion || '?')} ${esc(c.platform || '')}</summary>
+    <div class="small" style="margin-top:6px">${errs.map((e) => `<div style="color:var(--ink);font-family:ui-monospace,Menlo,monospace">${esc(e.name)} (${esc(e.screen || '')})</div>`).join('')}
+    ${c.events.slice(-12).map((e) => `<div>${new Date(e.at).toLocaleTimeString('en-GB')} · ${esc(e.kind)} · ${esc(e.name)}</div>`).join('')}</div></details>`;
+}
+async function copyPrompt(key, btn) {
+  const t = document.getElementById('p-' + key)?.textContent || '';
+  try { await navigator.clipboard.writeText(t); btn.textContent = 'Copied'; } catch { btn.textContent = 'Select the prompt above and copy'; }
+}
+async function analyse(id) {
+  busyAi[id] = true; render();
+  const { data: r, error } = await SB.functions.invoke('feedback-triage', { body: { feedback_id: id } });
+  busyAi[id] = false;
+  const f = data.fb.find((x) => x.id === id);
+  if (!error && r && r.ai && f) f.ai = r.ai;
+  else document.querySelector('#main').insertAdjacentHTML('afterbegin', '<div class="err" style="margin-bottom:12px">The AI couldn’t analyse that one. Try again in a minute.</div>');
+  render();
+}
+async function analyseAll() {
+  const list = data.fb.filter((x) => !x.ai && !noise(x) && (fbFilter === 'all' || x.status === fbFilter));
+  for (const x of list) await analyse(x.id);
+}
+async function analyseError(i) {
+  busyAi['e' + i] = true; render();
+  const e = data.errors[i];
+  const { data: r, error } = await SB.functions.invoke('feedback-triage', { body: { error: { name: e.name, screen: e.screen } } });
+  busyAi['e' + i] = false;
+  if (!error && r && r.ai) errAi[i] = r.ai;
+  render();
 }
 function go(v) { document.querySelector(`.nav[data-v="${v}"]`).click(); }
 async function setStatus(id, s) {
