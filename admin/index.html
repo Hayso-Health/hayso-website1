@@ -28,6 +28,7 @@ button,input,select{font:inherit;color:inherit}
 /* sign in */
 #login{min-height:100vh;display:grid;place-items:center;padding:16px}
 #login .glass{width:100%;max-width:400px;padding:30px}
+.wmk{display:inline-flex;align-items:baseline;font-weight:800;letter-spacing:-.05em;line-height:1;color:#1B2D2B;white-space:nowrap}
 .mark{display:flex;align-items:center;gap:10px;font-weight:800;font-size:22px;letter-spacing:-.03em}
 .ring{width:28px;height:28px;border-radius:50%;background:conic-gradient(var(--blue),var(--lilac),var(--pink),var(--blue));
   -webkit-mask:radial-gradient(circle,transparent 8px,#000 9px);mask:radial-gradient(circle,transparent 8px,#000 9px);filter:drop-shadow(0 0 6px rgba(156,140,242,.55))}
@@ -94,7 +95,7 @@ tr:last-child td{border-bottom:0}
 <!-- sign in -->
 <section id="login">
   <div class="glass">
-    <div class="mark"><div class="ring"></div>hayso <span class="small" style="font-weight:600;margin-left:4px">Admin</span></div>
+    <div class="mark"><span class="wmk" role="img" aria-label="hayso" style="font-size:30px"><span aria-hidden="true">hays</span><svg viewBox="0 0 100 100" aria-hidden="true" style="width:.531em;height:.531em;margin-left:.075em;position:relative;top:.015em;overflow:visible"><defs><linearGradient id="awm1" x1="0" y1="0" x2="1" y2="1"><stop offset=".12" stop-color="#5FB4F0"/><stop offset=".5" stop-color="#9C8CF2"/><stop offset=".88" stop-color="#F29BC0"/></linearGradient></defs><path d="M 47.19 12.61 A 37.5 37.5 0 1 1 12.61 47.16" fill="none" stroke="url(#awm1)" stroke-width="25" stroke-linecap="round"/></svg></span> <span class="small" style="font-weight:600;margin-left:4px">Admin</span></div>
     <h1 id="loginTitle" style="font-size:26px;margin:22px 0 4px">Sign in</h1>
     <p class="small" id="loginSub" style="margin:0 0 18px">App management for the Hayso team.</p>
     <form id="signin">
@@ -115,7 +116,7 @@ tr:last-child td{border-bottom:0}
 <!-- dashboard -->
 <section id="app">
   <aside class="side glass">
-    <div class="mark"><div class="ring"></div>hayso</div>
+    <div class="mark"><span class="wmk" role="img" aria-label="hayso" style="font-size:28px"><span aria-hidden="true">hays</span><svg viewBox="0 0 100 100" aria-hidden="true" style="width:.531em;height:.531em;margin-left:.075em;position:relative;top:.015em;overflow:visible"><defs><linearGradient id="awm2" x1="0" y1="0" x2="1" y2="1"><stop offset=".12" stop-color="#5FB4F0"/><stop offset=".5" stop-color="#9C8CF2"/><stop offset=".88" stop-color="#F29BC0"/></linearGradient></defs><path d="M 47.19 12.61 A 37.5 37.5 0 1 1 12.61 47.16" fill="none" stroke="url(#awm2)" stroke-width="25" stroke-linecap="round"/></svg></span></div>
     <button class="nav on" data-v="overview">Overview</button>
     <button class="nav" data-v="users">Users</button>
     <button class="nav" data-v="subs">Subscribers</button>
