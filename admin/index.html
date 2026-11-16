@@ -182,12 +182,25 @@ async function start() {
 }
 
 async function load() {
-  const [o, u, f, c, er, us] = await Promise.all([SB.rpc('admin_overview'), SB.rpc('admin_users'), SB.rpc('admin_feedback_v2'), SB.rpc('admin_chats'), SB.rpc('admin_errors'), SB.rpc('admin_usage')]);
-  data = { o: o.data || {}, users: u.data || [], fb: f.data || [], chats: c.data || [], errors: er.data || [], usage: us.data || {} };
+  const [o, u, f, c, er, us] = await Promise.all([SB.rpc('admin_overview'), SB.rpc('admin_users'), SB.rpc('admin_feedback_v3'), SB.rpc('admin_chats'), SB.rpc('admin_errors'), SB.rpc('admin_usage')]);
+  const fb = f.error ? ((await SB.rpc('admin_feedback_v2')).data || []) : (f.data || []);
+  data = { o: o.data || {}, users: u.data || [], fb, chats: c.data || [], errors: er.data || [], usage: us.data || {} };
   const e7 = data.usage.errors_7d || 0; $('#erN').textContent = e7; $('#erN').style.display = e7 ? 'inline-block' : 'none';
   const n = data.fb.filter((x) => x.status === 'new' && !noise(x)).length;
   $('#fbN').textContent = n; $('#fbN').style.display = n ? 'inline-block' : 'none';
   render();
+}
+let betaOnly = false, fbWho = null;
+const who = (x) => x.label || (x.email && !x.email.startsWith('Guest') ? x.email : 'Guest ' + short(x.user_id ?? x.id));
+async function setLabel(id, label) {
+  const { error } = await SB.rpc('admin_set_label', { uid: id, label });
+  if (error) return document.querySelector('#main').insertAdjacentHTML('afterbegin', '<div class="err" style="margin-bottom:12px">Could not save the name. Try again.</div>');
+  data.fb.forEach((x) => { if (x.user_id === id) x.label = label.trim() || null; }); render();
+}
+async function setBeta(id, on) {
+  const { error } = await SB.rpc('admin_set_beta', { uid: id, is_beta: on });
+  if (error) return document.querySelector('#main').insertAdjacentHTML('afterbegin', '<div class="err" style="margin-bottom:12px">Could not save. Try again.</div>');
+  data.fb.forEach((x) => { if (x.user_id === id) x.beta = on; }); render();
 }
 const noise = (x) => (x.text || '').trim().length < 12; // test taps like "kxrfkh"
 
@@ -252,18 +265,34 @@ function render() {
       </tbody></table></div>`;
   }
   if (view === 'feedback') {
-    const all = data.fb.filter((x) => !hideNoise || !noise(x));
+    const all = data.fb.filter((x) => (!hideNoise || !noise(x)) && (!betaOnly || x.beta) && (!fbWho || x.user_id === fbWho));
     const list = all.filter((x) => fbFilter === 'all' || x.status === fbFilter);
+    // who's sending feedback: one row per person, with a name and a beta-patient tick
+    const people = Object.values(data.fb.filter((x) => !noise(x)).reduce((acc, x) => {
+      const k = x.user_id || 'none';
+      acc[k] = acc[k] || { id: x.user_id, n: 0, last: x.created_at, label: x.label, email: x.email, beta: x.beta };
+      acc[k].n++; if (x.created_at > acc[k].last) acc[k].last = x.created_at; return acc;
+    }, {})).sort((a, b) => b.last.localeCompare(a.last));
     const count = (s) => all.filter((x) => x.status === s).length;
     const todo = list.filter((x) => !x.ai && !noise(x)).length;
-    m.innerHTML = head('Feedback', 'From the Test button and from hayso in the app') + `
+    m.innerHTML = head('Feedback', 'Who sent what, when and where. From the Test button and from hayso in the app') + `
+      <div class="panel glass" style="margin-bottom:14px"><h2>People giving feedback</h2>
+        <table><thead><tr><th>Person</th><th>Name them</th><th>Beta patient</th><th>Feedback</th><th>Last sent</th><th></th></tr></thead><tbody>
+        ${people.map((p) => `<tr><td>${esc(who(p))}<div class="small">${p.email && !p.email.startsWith('Guest') ? '' : 'Guest · ' + short(p.id)}</div></td>
+          <td><input value="${esc(p.label || '')}" placeholder="eg Sam, or Priya (on treatment)" style="width:100%;min-width:160px;padding:6px 10px;border-radius:10px;border:1px solid var(--line);font:inherit;font-size:13px" onchange="setLabel('${p.id}', this.value)"></td>
+          <td><input type="checkbox" ${p.beta ? 'checked' : ''} onchange="setBeta('${p.id}', this.checked)"></td>
+          <td>${fmt(p.n)}</td><td>${ago(p.last)}</td>
+          <td><button class="btn ghost" style="padding:5px 12px;font-size:12px" onclick="fbWho=fbWho==='${p.id}'?null:'${p.id}';render()">${fbWho === p.id ? 'Show everyone' : 'Only theirs'}</button></td></tr>`).join('') || '<tr><td colspan="6" class="empty">No feedback yet</td></tr>'}
+        </tbody></table>
+        <div class="small" style="margin-top:8px">Most testers sign in as guests, so there's no email. Give them a name here. Tick "Beta patient" for people actually on treatment.</div></div>
       <div class="tabs">${[['new', 'New'], ['in_progress', 'In progress'], ['fixed', 'Fixed'], ['all', 'All']].map(([k, l]) =>
         `<button class="${fbFilter === k ? 'on' : ''}" onclick="fbFilter='${k}';render()">${l} ${k === 'all' ? all.length : count(k)}</button>`).join('')}
         ${todo ? `<button class="on" style="background:linear-gradient(135deg,var(--blue),var(--lilac) 55%,var(--pink));border:0" onclick="analyseAll()">✦ Analyse ${todo} with AI</button>` : ''}
-        <label class="small row" style="margin-left:auto"><input type="checkbox" ${hideNoise ? 'checked' : ''} onchange="hideNoise=this.checked;render()"> Hide test taps</label></div>
+        <label class="small row" style="margin-left:auto"><input type="checkbox" ${betaOnly ? 'checked' : ''} onchange="betaOnly=this.checked;render()"> Beta patients only</label>
+        <label class="small row"><input type="checkbox" ${hideNoise ? 'checked' : ''} onchange="hideNoise=this.checked;render()"> Hide test taps</label></div>
       <div class="panel glass">${list.map((x) => `<div class="fb"><div><span class="chip ${x.type}">${x.type === 'bug' ? 'Bug' : 'Idea'}</span>
           ${x.source === 'hayso' ? '<span class="chip">via hayso</span>' : ''}
-          <span class="small">${when(x.created_at)}${x.screen ? ' · ' + esc(x.screen) : ''} · user ${short(x.user_id)}</span><p>${esc(x.text)}</p>
+          <b style="font-size:14px">${esc(who(x))}</b>${x.beta ? ' <span class="chip fixed">Beta patient</span>' : ''} <span class="small">${when(x.created_at)}${x.screen ? ' · ' + esc(x.screen) : ''}</span><p>${esc(x.text)}</p>
           ${aiBlock(x.ai, 'fb-' + x.id)}
           ${!x.ai && !noise(x) ? `<button class="btn ghost" style="padding:6px 14px;margin-top:8px;font-size:13px" onclick="analyse('${x.id}')">${busyAi[x.id] ? 'Analysing…' : '✦ Analyse with AI'}</button>` : ''}
           ${ctxBlock(x.context)}</div>
