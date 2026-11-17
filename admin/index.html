@@ -125,6 +125,7 @@ tr:last-child td{border-bottom:0}
     <button class="nav" data-v="errors">App errors <span class="n" id="erN" style="display:none"></span></button>
     <button class="nav" data-v="usage">Usage</button>
     <button class="nav" data-v="chats">hayso chats</button>
+    <button class="nav" data-v="library">Library <span class="n" id="libN" style="display:none"></span></button>
     <div class="foot"><div class="small" id="who"></div><a href="#" id="signout" class="small">Sign out</a></div>
   </aside>
   <main id="main"></main>
@@ -205,7 +206,9 @@ async function setBeta(id, on) {
 const noise = (x) => (x.text || '').trim().length < 12; // test taps like "kxrfkh"
 
 document.querySelectorAll('.nav').forEach((b) => b.onclick = () => {
-  view = b.dataset.v; document.querySelectorAll('.nav').forEach((x) => x.classList.toggle('on', x === b)); render();
+  view = b.dataset.v; document.querySelectorAll('.nav').forEach((x) => x.classList.toggle('on', x === b));
+  if (view === 'library') return libLoad();
+  render();
 });
 
 // ---------- views ----------
@@ -322,6 +325,7 @@ function render() {
       <div class="panel glass wide"><h2>Top actions (7 days)</h2><table><thead><tr><th>Action</th><th>Times</th><th>People</th></tr></thead><tbody>
         ${(u.actions || []).map((r) => `<tr><td>${esc(r.name)}</td><td>${fmt(r.times)}</td><td>${fmt(r.users)}</td></tr>`).join('') || '<tr><td colspan="3" class="empty">No data yet</td></tr>'}</tbody></table></div></div>`;
   }
+  if (view === 'library') return libRender(m);
   if (view === 'chats') {
     m.innerHTML = head('hayso chats', 'What people ask hayso in the app, newest first') + `
       <div class="panel glass">${data.chats.map((c) => `<div class="chat"><div class="small">${when(c.created_at)} · user ${short(c.user_id)}${c.route && c.route !== 'allowed' ? ` · <span class="chip">${esc(c.route)}</span>` : ''}</div>
@@ -373,6 +377,161 @@ async function analyseError(i) {
   busyAi['e' + i] = false;
   if (!error && r && r.ai) errAi[i] = r.ai;
   render();
+}
+
+// ---------- Library: web pages -> notes in our own words -> a person approves (17 Nov 2026) ----------
+const TYPES = { info: 'Facts and info', recipe: 'Recipes', workout: 'Workouts', meal_plan: 'Meal plans' };
+const lib = { tab: 'check', sources: [], jobs: [], items: [], approved: [], o: {}, topic: '', type: 'info', links: '', site: '', words: '', q: '', qType: '', running: {}, msg: '', openJob: null, pages: {} };
+async function libLoad() {
+  const [o, s, j, d, a] = await Promise.all([SB.rpc('admin_lib_overview'), SB.rpc('admin_lib_sources'), SB.rpc('admin_lib_jobs'),
+    SB.rpc('admin_lib_items', { p_status: 'draft' }), SB.rpc('admin_lib_items', { p_status: 'approved', p_type: lib.qType || null, p_q: lib.q || null })]);
+  if (o.error) { lib.msg = 'The library isn’t switched on yet. Ask Claude to apply the library update.'; }
+  Object.assign(lib, { o: o.data || {}, sources: s.data || [], jobs: j.data || [], items: d.data || [], approved: a.data || [] });
+  const n = lib.o.to_check || 0; $('#libN').textContent = n; $('#libN').style.display = n ? 'inline-block' : 'none';
+  if (view === 'library') render();
+}
+function libSay(msg) { lib.msg = msg; render(); }
+function libRender(m) {
+  const o = lib.o, allowed = lib.sources.filter((x) => x.allowed);
+  const tabs = [['check', `To check (${fmt(o.to_check)})`], ['library', `Library (${fmt(o.approved)})`], ['new', 'New scrape'], ['jobs', 'Scrapes'], ['sites', 'Sites']];
+  let body = '';
+  if (lib.tab === 'check') {
+    body = lib.items.length ? lib.items.map((i) => libCard(i, true)).join('') : '<div class="panel glass empty">Nothing to check. Start a new scrape.</div>';
+  }
+  if (lib.tab === 'library') {
+    body = `<div class="panel glass"><div class="row" style="gap:10px;flex-wrap:wrap">
+        <input id="libQ" placeholder="Search the library" value="${esc(lib.q)}" oninput="lib.q=this.value" onkeydown="if(event.key==='Enter')libLoad()" style="flex:1;min-width:200px;padding:10px 14px;border-radius:12px;border:1px solid var(--line);font:inherit">
+        <select id="libQType" onchange="lib.qType=this.value;libLoad()" style="padding:10px;border-radius:12px;border:1px solid var(--line);font:inherit"><option value="">All types</option>${Object.entries(TYPES).map(([k, l]) => `<option value="${k}" ${lib.qType === k ? 'selected' : ''}>${l}</option>`).join('')}</select>
+        <button class="btn ghost" onclick="libLoad()" style="padding:9px 16px">Search</button></div></div>` +
+      (lib.approved.length ? lib.approved.map((i) => libCard(i, false)).join('') : '<div class="panel glass empty">No approved notes yet.</div>');
+  }
+  if (lib.tab === 'new') {
+    body = `<div class="panel glass" style="display:flex;flex-direction:column;gap:14px;max-width:760px">
+      <div><div class="small" style="margin-bottom:6px">1. What’s it about?</div>
+        <input id="libTopic" placeholder="eg protein when you have a small appetite" value="${esc(lib.topic)}" oninput="lib.topic=this.value" style="width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--line);font:inherit"></div>
+      <div><div class="small" style="margin-bottom:6px">2. What should it make?</div>
+        <div class="tabs" style="margin:0">${Object.entries(TYPES).map(([k, l]) => `<button class="${lib.type === k ? 'on' : ''}" onclick="lib.type='${k}';render()">${l}</button>`).join('')}</div></div>
+      <div><div class="small" style="margin-bottom:6px">3. Which pages? Paste links, one per line. Or find them on a site below.</div>
+        <textarea id="libLinks" rows="7" placeholder="https://www.nhs.uk/live-well/eat-well/..." oninput="lib.links=this.value" style="width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--line);font:13px ui-monospace,Menlo,monospace">${esc(lib.links)}</textarea>
+        <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:8px">
+          <select id="libSite" onchange="lib.site=this.value" style="padding:9px;border-radius:12px;border:1px solid var(--line);font:inherit"><option value="">Pick a site</option>${allowed.map((x) => `<option value="${esc(x.domain)}" ${lib.site === x.domain ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select>
+          <input id="libWords" placeholder="words in the page address, eg protein" value="${esc(lib.words)}" oninput="lib.words=this.value" style="flex:1;min-width:180px;padding:9px 12px;border-radius:12px;border:1px solid var(--line);font:inherit">
+          <button class="btn ghost" onclick="libFind(this)" style="padding:9px 16px">Find pages</button></div></div>
+      <div class="row" style="gap:12px;align-items:center"><button class="btn" onclick="libStart(this)">Start scrape</button>
+        <span class="small">${lib.links.split(/\n/).filter((x) => x.trim()).length} links · about $${(lib.links.split(/\n/).filter((x) => x.trim()).length * 0.004).toFixed(2)}</span></div>
+      <div class="small">Only pages on your allowed sites are read. Each page becomes up to 8 draft notes in our own words. Nothing is used until you approve it.</div></div>`;
+  }
+  if (lib.tab === 'jobs') {
+    body = `<div class="panel glass">${lib.jobs.map((j) => {
+      const pct = j.pages_total ? Math.round((j.pages_done / j.pages_total) * 100) : 0, run = lib.running[j.id];
+      return `<div class="fb" style="display:block"><div class="row" style="flex-wrap:wrap;gap:8px"><b>${esc(j.topic)}</b><span class="chip">${TYPES[j.type]}</span>
+          <span class="chip ${j.status === 'done' ? 'fixed' : j.status === 'running' || run ? 'in_progress' : j.status === 'failed' ? 'bug' : 'new'}">${run ? 'Reading pages…' : esc(j.status)}</span>
+          <span class="small" style="margin-left:auto">${when(j.created_at)} · ${esc(j.created_by || '')}</span></div>
+        <div style="height:8px;border-radius:99px;background:rgba(24,33,31,.08);margin:10px 0 6px;overflow:hidden"><div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#5FB4F0,#9C8CF2,#F29BC0)"></div></div>
+        <div class="row small" style="gap:14px;flex-wrap:wrap"><span>${j.pages_done} of ${j.pages_total} pages</span><span>${j.items_made} notes made</span><span>$${Number(j.cost_usd).toFixed(3)}</span>
+          ${j.error ? `<span>${esc(j.error)}</span>` : ''}
+          <span style="margin-left:auto;display:flex;gap:8px">
+            ${!run && j.pages_done < j.pages_total && j.status !== 'stopped' ? `<button class="btn" style="padding:6px 14px;font-size:13px" onclick="libRun('${j.id}')">Run</button>` : ''}
+            ${run || j.status === 'running' || j.status === 'queued' ? `<button class="btn ghost" style="padding:6px 14px;font-size:13px" onclick="libStop('${j.id}')">Stop</button>` : ''}
+            <button class="btn ghost" style="padding:6px 14px;font-size:13px" onclick="libPages('${j.id}')">${lib.openJob === j.id ? 'Hide pages' : 'Pages'}</button></span></div>
+        ${lib.openJob === j.id ? `<div style="margin-top:8px">${(lib.pages[j.id] || []).map((p) => `<div class="small" style="padding:4px 0;border-top:1px solid var(--line)"><span class="chip ${p.status === 'done' ? 'fixed' : p.status === 'failed' ? 'bug' : ''}">${p.status}</span> <a href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.title || p.url)}</a>${p.reason ? ` · ${esc(p.reason)}` : ''}</div>`).join('')}</div>` : ''}
+      </div>`; }).join('') || '<div class="empty">No scrapes yet.</div>'}</div>`;
+  }
+  if (lib.tab === 'sites') {
+    body = `<div class="panel glass"><h2>Sites the scraper may read</h2>
+      <table><thead><tr><th>Site</th><th>Address</th><th>Kind</th><th>Allowed</th></tr></thead><tbody>
+      ${lib.sources.map((x) => `<tr><td>${esc(x.name)}</td><td>${esc(x.domain)}</td><td>${esc(x.kind)}</td>
+        <td><input type="checkbox" ${x.allowed ? 'checked' : ''} onchange="libSite('${esc(x.domain)}','${esc(x.name)}','${x.kind}',this.checked)"></td></tr>`).join('')}</tbody></table>
+      <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:14px">
+        <input id="newDom" placeholder="Website address, eg bda.uk.com" style="flex:1;min-width:180px;padding:9px 12px;border-radius:12px;border:1px solid var(--line);font:inherit">
+        <input id="newName" placeholder="Name" style="width:200px;padding:9px 12px;border-radius:12px;border:1px solid var(--line);font:inherit">
+        <select id="newKind" style="padding:9px;border-radius:12px;border:1px solid var(--line);font:inherit"><option value="health">Health</option><option value="food">Food</option><option value="fitness">Fitness</option><option value="general">General</option></select>
+        <button class="btn" style="padding:9px 18px" onclick="libSite($('#newDom').value,$('#newName').value,$('#newKind').value,true)">Add site</button></div>
+      <div class="small" style="margin-top:8px">Only add trusted sites. The scraper also obeys each site’s robots.txt.</div></div>`;
+  }
+  m.innerHTML = head('Library', 'Web pages turned into notes in our own words. Nothing is used until you approve it.') +
+    (lib.msg ? `<div class="err" style="margin-bottom:12px">${esc(lib.msg)}</div>` : '') +
+    `<div class="kpis">${kpi('To check', fmt(o.to_check), 'waiting for you')}${kpi('Approved', fmt(o.approved), Object.entries(o.by_type || {}).map(([k, v]) => `${v} ${TYPES[k].toLowerCase()}`).join(' · ') || 'none yet')}
+      ${kpi('Needs clinician', fmt(o.needs_clinician), 'approved health notes')}${kpi('Spent', '$' + Number(o.spend_usd || 0).toFixed(2), 'on DeepSeek, all time')}</div>
+    <div class="tabs" style="margin-top:14px">${tabs.map(([k, l]) => `<button class="${lib.tab === k ? 'on' : ''}" onclick="lib.tab='${k}';lib.msg='';render()">${l}</button>`).join('')}</div>` + body;
+}
+function libData(i) {
+  const d = i.data || {};
+  if (i.type === 'recipe') return `<div class="small" style="margin-top:6px">${[d.servings && `Serves ${d.servings}`, d.minutes && `${d.minutes} min`, d.protein_g && `${d.protein_g} g protein`].filter(Boolean).join(' · ')}</div>
+    ${(d.ingredients || []).length ? `<div class="small" style="margin-top:4px"><b>Ingredients:</b> ${d.ingredients.map((x) => esc(`${x.amount || ''} ${x.item || ''}`.trim())).join(', ')}</div>` : ''}
+    ${(d.steps || []).length ? `<ol class="small" style="margin:4px 0 0 18px">${d.steps.map((x) => `<li>${esc(x)}</li>`).join('')}</ol>` : ''}`;
+  if (i.type === 'workout') return `<div class="small" style="margin-top:6px">${[d.level, d.equipment, (d.muscles || []).join(', ')].filter(Boolean).map(esc).join(' · ')}</div>
+    ${(d.how || []).length ? `<ol class="small" style="margin:4px 0 0 18px">${d.how.map((x) => `<li>${esc(x)}</li>`).join('')}</ol>` : ''}`;
+  if (i.type === 'meal_plan') return (d.meals || []).length ? `<div class="small" style="margin-top:6px">${d.meals.map((x) => `<b>${esc(x.slot)}:</b> ${esc(x.idea)}${x.protein_g ? ` (${x.protein_g} g)` : ''}`).join('<br>')}</div>` : '';
+  return '';
+}
+function libCard(i, editing) {
+  return `<div class="panel glass" id="li-${i.id}"><div class="row" style="flex-wrap:wrap;gap:8px"><span class="chip">${TYPES[i.type]}</span>
+      ${i.needs_clinician ? `<span class="chip ${i.clinician_ok ? 'fixed' : 'bug'}">${i.clinician_ok ? 'Clinician checked' : 'Needs clinician'}</span>` : ''}
+      ${(i.tags || []).map((t) => `<span class="chip">${esc(t)}</span>`).join('')}
+      <a class="small" style="margin-left:auto" href="${esc(i.page_url)}" target="_blank" rel="noopener">Source: ${esc(i.source_domain)}</a></div>
+    ${editing ? `<input id="t-${i.id}" value="${esc(i.title)}" style="width:100%;margin-top:10px;padding:9px 12px;border-radius:10px;border:1px solid var(--line);font:inherit;font-weight:600;font-size:16px">
+      <textarea id="b-${i.id}" rows="3" style="width:100%;margin-top:8px;padding:9px 12px;border-radius:10px;border:1px solid var(--line);font:inherit;font-size:14px">${esc(i.body)}</textarea>`
+      : `<div style="margin-top:8px;font-weight:600">${esc(i.title)}</div><div style="margin-top:4px;font-size:14px">${esc(i.body)}</div>`}
+    ${libData(i)}
+    <div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap">
+      ${editing ? `<button class="btn" style="padding:7px 16px;font-size:13px" onclick="libReview('${i.id}','approved')">Approve</button>` : `<button class="btn ghost" style="padding:7px 16px;font-size:13px" onclick="libReview('${i.id}','draft')">Back to check</button>`}
+      ${i.needs_clinician ? `<label class="small row" style="gap:6px"><input type="checkbox" ${i.clinician_ok ? 'checked' : ''} onchange="libClin('${i.id}',this.checked)"> Clinician checked</label>` : ''}
+      <button class="btn ghost" style="padding:7px 16px;font-size:13px;margin-left:auto" onclick="libReview('${i.id}','binned')">Bin</button>
+      <span class="small">${i.reviewed_by ? `Last checked by ${esc(i.reviewed_by)} · ${ago(i.reviewed_at)}` : `Made ${ago(i.created_at)}`}</span></div></div>`;
+}
+async function libReview(id, status) {
+  const t = $('#t-' + id), b = $('#b-' + id);
+  const { error } = await SB.rpc('admin_lib_review', { p_item: id, p_status: status, p_title: t ? t.value : null, p_body: b ? b.value : null, p_clinician_ok: null });
+  if (error) return libSay('Could not save that. Try again.');
+  libLoad();
+}
+async function libClin(id, on) {
+  const it = [...lib.items, ...lib.approved].find((x) => x.id === id);
+  const { error } = await SB.rpc('admin_lib_review', { p_item: id, p_status: it.status, p_title: null, p_body: null, p_clinician_ok: on });
+  if (error) return libSay('Could not save that. Try again.');
+  it.clinician_ok = on; libLoad();
+}
+async function libSite(domain, name, kind, allowed) {
+  const { error } = await SB.rpc('admin_lib_set_source', { p_domain: domain, p_name: name, p_kind: kind, p_allowed: allowed });
+  if (error) return libSay(error.message.includes('website') ? 'That doesn’t look like a website address.' : 'Could not save the site. Try again.');
+  libLoad();
+}
+async function libFind(btn) {
+  if (!lib.site) return libSay('Pick a site first.');
+  btn.disabled = true; btn.textContent = 'Looking…';
+  const { data: r, error } = await SB.functions.invoke('library-scrape', { body: { action: 'find', domain: lib.site, words: lib.words } });
+  btn.disabled = false; btn.textContent = 'Find pages';
+  if (error || r?.error) return libSay(r?.error || 'Could not read that site’s page list. Paste links instead.');
+  if (!r.links.length) return libSay('No pages matched those words. Try fewer or different words.');
+  lib.links = [...new Set([...lib.links.split('\n').map((x) => x.trim()).filter(Boolean), ...r.links])].join('\n');
+  lib.msg = `Found ${r.links.length} pages. Remove any you don’t want, then press Start scrape.`; render();
+}
+async function libStart(btn) {
+  const urls = lib.links.split('\n').map((x) => x.trim()).filter(Boolean);
+  btn.disabled = true;
+  const { data: id, error } = await SB.rpc('admin_lib_create_job', { p_topic: lib.topic, p_type: lib.type, p_urls: urls });
+  btn.disabled = false;
+  if (error) return libSay(error.message.includes('topic') ? 'Add a topic first.' : error.message.includes('link') ? 'Add at least one web link (starting https://).' : 'Could not start the scrape. Try again.');
+  lib.topic = ''; lib.links = ''; lib.tab = 'jobs'; lib.msg = '';
+  await libLoad(); libRun(id);
+}
+async function libRun(id) {
+  lib.running[id] = true; render();
+  for (let k = 0; k < 80 && lib.running[id]; k++) {
+    const { data: r, error } = await SB.functions.invoke('library-scrape', { body: { action: 'run', job_id: id } });
+    if (error || r?.error) { lib.running[id] = false; return libSay(r?.error || 'The scraper stopped with an error. Press Run to carry on.'); }
+    const j = await SB.rpc('admin_lib_jobs'); lib.jobs = j.data || lib.jobs;
+    if (lib.openJob === id) lib.pages[id] = (await SB.rpc('admin_lib_job_pages', { p_job: id })).data || [];
+    if (view === 'library') render();
+    if (!r.remaining) break;
+  }
+  lib.running[id] = false; libLoad();
+}
+async function libStop(id) { lib.running[id] = false; await SB.rpc('admin_lib_stop_job', { p_job: id }); libLoad(); }
+async function libPages(id) {
+  if (lib.openJob === id) { lib.openJob = null; return render(); }
+  lib.openJob = id; lib.pages[id] = (await SB.rpc('admin_lib_job_pages', { p_job: id })).data || []; render();
 }
 function go(v) { document.querySelector(`.nav[data-v="${v}"]`).click(); }
 async function setStatus(id, s) {
