@@ -1,211 +1,236 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-GB">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Terms of Use — hayso</title>
-<link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png"><link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
-<meta name="description" content="Terms of Use for hayso.">
-<meta name="robots" content="noindex, follow">
+<title>Terms of Use | Hayso</title>
+<meta name="description" content="The terms for using the Hayso app and website, including our health information disclaimer.">
 <link rel="canonical" href="https://haysohealth.com/terms">
-
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500&display=swap">
+<link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400..800&display=swap" rel="stylesheet">
 <style>
-:root {
-  --purple: #5d48db;
-  --ink: #000000;
-  --ink-soft: #2e2e2e;
-  --muted: #8f8f8f;
-  --line: #e0e0e0;
-  --line-soft: #f0f0f0;
-  --surface: #ffffff;
-  --r-pill: 30px;
-  --shadow-nav: rgba(0, 0, 0, 0.06) 0 8px 30px 0;
-}
-* { box-sizing: border-box; }
-body {
-  margin: 0;
-  background: var(--surface);
-  color: var(--ink);
-  font-family: 'Manrope', ui-sans-serif, system-ui, sans-serif;
-  font-weight: 400;
-  font-size: 16px;
-  line-height: 1.65;
-  letter-spacing: -0.012em;
-  -webkit-font-smoothing: antialiased;
-}
-a { color: var(--purple); }
-::selection { background: rgba(93, 72, 219, 0.18); }
-:focus-visible { outline: 2px solid var(--purple); outline-offset: 3px; }
-
-.nav-wrap { display: flex; justify-content: center; padding: 20px; }
-.nav {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 14px 24px;
-  border-radius: 52px;
-  background: var(--surface);
-  box-shadow: var(--shadow-nav);
-  text-decoration: none;
-  color: var(--ink);
-}
-.brand-mark {
-  width: 26px; height: 26px; border-radius: 9px;
-  background: var(--purple); color: #fff;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 15px; font-weight: 500; line-height: 1;
-}
-.brand-name { font-size: 20px; font-weight: 500; letter-spacing: -0.017em; }
-
-main { max-width: 66ch; margin: 0 auto; padding: 40px 24px 80px; }
-
-h1 {
-  font-size: clamp(34px, 6vw, 52px);
-  font-weight: 400;
-  line-height: 1.08;
-  letter-spacing: -0.035em;
-  color: var(--purple);
-  margin: 0 0 8px;
-}
-h2 {
-  font-size: 20px;
-  font-weight: 500;
-  letter-spacing: -0.02em;
-  margin: 56px 0 12px;
-  padding-top: 32px;
-  border-top: 1px solid var(--line);
-}
-h3 { font-size: 16px; font-weight: 500; margin: 32px 0 8px; }
-p, li { color: var(--ink-soft); }
-p strong, li strong, td strong { color: var(--ink); font-weight: 500; }
-ul { padding-left: 20px; }
-li { margin-bottom: 6px; }
-hr { display: none; }
-code {
-  background: var(--line-soft);
-  padding: 2px 6px;
-  border-radius: 6px;
-  font-size: 0.875em;
-}
-.updated { color: var(--muted); font-size: 14px; margin: 0 0 40px; }
-
-.table-wrap { overflow-x: auto; margin: 24px 0; }
-table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 30rem; }
-th, td {
-  text-align: left; vertical-align: top;
-  padding: 12px 14px;
-  border-bottom: 1px solid var(--line);
-  color: var(--ink-soft);
-}
-th { color: var(--ink); font-weight: 500; white-space: nowrap; }
-tbody tr:nth-child(odd) { background: rgba(240, 240, 240, 0.45); }
-
-.todo {
-  background: rgba(93, 72, 219, 0.12);
-  border-bottom: 2px solid var(--purple);
-  color: var(--purple);
-  padding: 0 4px;
-  font-weight: 500;
-}
-
-.footer {
-  border-top: 1px solid var(--line);
-  padding: 32px 24px 48px;
-  font-size: 13px;
-  color: var(--muted);
-}
-.footer-inner { max-width: 66ch; margin: 0 auto; }
-.footer-links { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 16px; }
-.footer-links a, .footer-links button {
-  color: var(--muted);
-  font: inherit;
-  background: none;
-  border: 0;
-  padding: 0;
-  border-bottom: 1px solid var(--line);
-  text-decoration: none;
-  cursor: pointer;
-}
-.footer-links a:hover, .footer-links button:hover { color: var(--purple); }
-.footer p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.55; }
-
-@media (max-width: 768px) {
-  main { padding: 24px 20px 64px; }
-  h2 { margin-top: 44px; padding-top: 26px; }
-}
+:root{--paper:#F3F2EF;--ink:#18211F;--soft:#33403D;--petrol:#1F3A38;--muted:#5E6866;--line:rgba(24,33,31,.1);--blue:#5FB4F0;--lilac:#9C8CF2;--pink:#F29BC0}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;font-family:'DM Sans',system-ui,-apple-system,sans-serif;color:var(--ink);font-size:17px;line-height:1.65;
+  background:radial-gradient(circle at 8% 0%,#D9ECF9 0,rgba(217,236,249,0) 38%),radial-gradient(circle at 96% 6%,#ECE6FB 0,rgba(236,230,251,0) 38%),var(--paper);background-attachment:fixed}
+a{color:var(--petrol);text-underline-offset:3px}
+:focus-visible{outline:2px solid var(--lilac);outline-offset:3px}
+header{display:flex;align-items:center;justify-content:space-between;max-width:760px;margin:0 auto;padding:22px 16px}
+.brand{display:inline-flex;align-items:baseline;font-weight:800;font-size:30px;letter-spacing:-.05em;color:#1B2D2B;text-decoration:none;line-height:1}
+.brand svg{width:.531em;height:.531em;margin-left:.075em;position:relative;top:.015em;overflow:visible}
+header nav{display:flex;gap:16px;font-size:15px}
+header nav a{text-decoration:none;color:var(--muted)}
+header nav a[aria-current]{color:var(--ink);font-weight:600}
+main{max-width:760px;margin:0 auto;padding:8px 16px 72px}
+h1{font-size:clamp(34px,7vw,48px);font-weight:800;letter-spacing:-.035em;line-height:1.08;margin:12px 0 6px}
+.updated{color:var(--muted);font-size:15px;margin:0 0 26px}
+h2{font-size:22px;font-weight:800;letter-spacing:-.02em;margin:44px 0 10px;scroll-margin-top:20px}
+h3{font-size:17px;font-weight:700;margin:22px 0 6px}
+p,li{color:var(--soft)}
+strong{color:var(--ink);font-weight:700}
+ul{padding-left:22px}li{margin-bottom:8px}
+.glass{background:rgba(255,255,255,.66);backdrop-filter:blur(20px) saturate(1.3);-webkit-backdrop-filter:blur(20px) saturate(1.3);
+  border:1px solid rgba(255,255,255,.9);border-radius:22px;box-shadow:0 16px 30px -16px rgba(28,52,49,.25),0 2px 6px rgba(28,52,49,.05)}
+.short{padding:22px 24px;margin:0 0 8px}
+.short h2{margin:0 0 10px}
+.short ul{margin:0}
+.alert{padding:18px 22px;margin:22px 0;border-left:4px solid var(--lilac)}
+.alert p{margin:4px 0}
+.toc{padding:16px 22px;margin:18px 0 0;font-size:15px}
+.toc ul{margin:6px 0 0;padding:0;list-style:none;columns:2;column-gap:28px}
+.toc li{margin-bottom:4px}
+.table-wrap{overflow-x:auto;margin:16px 0}
+table{width:100%;border-collapse:collapse;font-size:15px;min-width:520px}
+th,td{text-align:left;vertical-align:top;padding:11px 12px;border-bottom:1px solid var(--line);color:var(--soft)}
+th{color:var(--ink);font-weight:700}
+footer{border-top:1px solid var(--line);padding:26px 16px 44px;font-size:14px;color:var(--muted)}
+footer div{max-width:760px;margin:0 auto}
+footer nav{display:flex;flex-wrap:wrap;gap:16px;margin-bottom:10px}
+footer button{font:inherit;color:var(--petrol);background:none;border:0;padding:0;text-decoration:underline;cursor:pointer}
+@media (max-width:600px){.toc ul{columns:1}header nav{gap:12px;font-size:14px}}
+@media print{body{background:#fff}.glass{box-shadow:none;border:1px solid #ddd}header nav,footer nav{display:none}}
 </style>
 </head>
 <body>
-
-<div class="nav-wrap">
-  <a class="nav" href="/">
-    <span class="brand-mark">h</span>
-    <span class="brand-name">hayso</span>
-  </a>
-</div>
-
+<header><a class="brand" href="/" aria-label="Hayso home"><span aria-hidden="true">hays</span><svg viewBox="0 0 100 100" aria-hidden="true"><defs><linearGradient id="wm" x1="0" y1="0" x2="1" y2="1"><stop offset=".12" stop-color="#5FB4F0"/><stop offset=".5" stop-color="#9C8CF2"/><stop offset=".88" stop-color="#F29BC0"/></linearGradient></defs><path d="M 47.19 12.61 A 37.5 37.5 0 1 1 12.61 47.19" fill="none" stroke="url(#wm)" stroke-width="25" stroke-linecap="round"/></svg></a><nav aria-label="Legal pages"><a href="/terms" aria-current="page">Terms</a><a href="/privacy">Privacy</a><a href="/delete-account">Delete account</a></nav></header>
 <main>
-<h1>hayso — Website Terms of Use</h1>
-<p class="updated"><strong>Last updated: 19 August 2026</strong></p>
-<h2>1. Who we are</h2>
-<p>This website is operated by <strong>Samuel Seymour Lionel Cohen</strong>, a sole trader trading as "hayso", based in the United Kingdom. Contact: <strong>hello@haysohealth.com</strong>.</p>
-<p>By using this website, you accept these terms. If you don't accept them, please don't use the site.</p>
-<h2>2. What hayso is, and what it isn't</h2>
-<p>hayso is software for clinics. It is intended to help a clinic see how its patients are doing between appointments and to support those patients day to day.</p>
-<p>hayso supports care delivered by a registered clinician. It does not deliver that care. Specifically:</p>
+<h1>Terms of Use</h1>
+<p class="updated">Last updated: 17 November 2026</p>
+
+<section class="glass short">
+<h2 id="short-version">The short version</h2>
 <ul>
-<li>hayso is not a medical device, and nothing on this website is intended to diagnose, treat, cure or prevent any disease or condition.</li>
-<li>hayso does not prescribe, supply, or arrange the supply of any medicine.</li>
-<li>Nothing hayso shows a clinician replaces their own clinical judgement. Clinical decisions, and responsibility for them, remain entirely with the treating clinician.</li>
-<li>Nothing on this website is medical advice to you or to anyone else.</li>
+<li><strong>Hayso is information and support only.</strong> It is not medical advice, and it is not a medical device.</li>
+<li><strong>Everything in Hayso is general information.</strong> That includes your plan, score, targets, meals, workouts and anything hayso says. It is not a personal recommendation, even when it uses your answers.</li>
+<li><strong>You make your own health decisions.</strong> Check with your doctor, prescriber or clinic before you change your treatment, diet or exercise.</li>
+<li><strong>In an emergency, call 999.</strong> For urgent advice, call NHS 111. Hayso is not an emergency service.</li>
+<li><strong>By using Hayso you accept these terms</strong>, including the limits on our responsibility in section 14.</li>
 </ul>
-<p>If you have reached this site as a patient rather than as a clinician: this is not a place to get treatment or medical advice. Speak to your GP, your pharmacist, or the clinician treating you. Never stop, start, change or delay any prescribed treatment because of something you read here. If you think you may have a medical emergency, call 999 or NHS 111.</p>
-<h2>3. The product isn't available yet</h2>
-<p>hayso is in development. Everything on this site describing the product — features, timelines, availability — is an indication of what we intend to build, not a promise. It may change, or may not be delivered at all.</p>
-<p>Joining the waiting list doesn't guarantee you or your clinic access, doesn't create a contract, and doesn't oblige you to pay anything. If we go on to work together, that will be under a separate written agreement.</p>
-<h2>4. Using the site</h2>
-<p>You may use this website for the purposes of evaluating hayso for your clinic. You must not:</p>
+</section>
+
+<nav class="glass toc" aria-label="Contents"><strong>Contents</strong><ul><li><a href="#short-version">The short version</a></li><li><a href="#who">1. Who we are</a></li><li><a href="#agreement">2. Agreeing to these terms</a></li><li><a href="#who-can-use">3. Who can use Hayso</a></li><li><a href="#not-medical-advice">4. Health information, not medical advice</a></li><li><a href="#hayso-ai">5. hayso, our AI guide</a></li><li><a href="#clinics">6. Linking to a clinic</a></li><li><a href="#subscriptions">7. Subscriptions and payments</a></li><li><a href="#fair-use">8. Using Hayso fairly</a></li><li><a href="#content">9. Your content and ours</a></li><li><a href="#other-services">10. Other services</a></li><li><a href="#changes-service">11. Changes and availability</a></li><li><a href="#ending">12. Ending your account</a></li><li><a href="#faults">13. If something goes wrong with the app</a></li><li><a href="#liability">14. Our responsibility to you</a></li><li><a href="#complaints">15. Questions and complaints</a></li><li><a href="#changes-terms">16. Changes to these terms</a></li><li><a href="#law">17. Law and courts</a></li></ul></nav>
+
+<h2 id="who">1. Who we are</h2>
+<p>The Hayso app and the website haysohealth.com are run by <strong>Hayso Health Limited</strong>, a company registered in the United Kingdom ("Hayso", "we", "us", "our").</p>
+<p>Contact us at <a href="mailto:hello@haysohealth.com">hello@haysohealth.com</a>.</p>
+
+<h2 id="agreement">2. Agreeing to these terms</h2>
+<p>These terms are a legal agreement between you and us. You accept them when you create an account, tap to agree, or use the app or website. Please read them, and our <a href="/privacy">Privacy Policy</a>, before you use Hayso. If you do not accept them, please do not use Hayso.</p>
+<p>The app stores (Apple App Store and Google Play) also have their own terms. Those terms apply to how you download the app and pay for it.</p>
+
+<h2 id="who-can-use">3. Who can use Hayso</h2>
 <ul>
-<li>use it in any way that breaks the law or is fraudulent;</li>
-<li>try to gain unauthorised access to it, or introduce malicious code;</li>
-<li>submit false information, or another person's details, to the waiting list;</li>
-<li>scrape, copy or systematically extract content from it without our permission.</li>
+<li>You must be <strong>18 or over</strong>.</li>
+<li>Hayso is designed for people in the United Kingdom. If you use it somewhere else, you are responsible for following local laws.</li>
+<li>You must give us accurate information and keep it up to date. Hayso's general information is based on what you tell it, so wrong details can make it less useful.</li>
+<li>Keep your login safe. Tell us straight away if you think someone else is using your account.</li>
 </ul>
-<p>Do not send us information about identifiable patients through this website. It is not built to receive it, and we do not want it.</p>
-<h2>5. Our content</h2>
-<p>We own or license all content on this site — text, design, graphics, logos and the hayso name. You may not reproduce or reuse it commercially without our written permission.</p>
-<h2>6. Links to other sites</h2>
-<p>Where we link to other websites, we do so for information only. We don't control them and we're not responsible for their content.</p>
-<h2>7. Our liability</h2>
-<p>We provide this website "as is". While we take reasonable care over its content, we don't warrant that it's accurate, complete or up to date, and you shouldn't make a business decision on the strength of it alone.</p>
-<p>To the extent permitted by law, we're not liable for any loss or damage arising from your use of this site or reliance on anything in it, including any loss of profit, business or goodwill.</p>
-<p>Nothing in these terms limits or excludes our liability for death or personal injury caused by our negligence, for fraud or fraudulent misrepresentation, or for anything else that can't be excluded under UK law.</p>
-<h2>8. Privacy</h2>
-<p>How we handle personal information is set out in our <a href="/privacy">Privacy Policy</a> and <a href="/cookies">Cookie Policy</a>.</p>
-<h2>9. Changes</h2>
-<p>We may update these terms. The version on this page at the time you use the site is the one that applies.</p>
-<h2>10. Governing law</h2>
-<p>These terms are governed by the laws of England and Wales, and the courts of England and Wales have exclusive jurisdiction.</p>
+
+<h2 id="not-medical-advice">4. Health information, not medical advice</h2>
+<div class="glass alert" role="note">
+<p><strong>Please read this section carefully.</strong> It explains what Hayso is and what it is not.</p>
+</div>
+<h3>What Hayso is</h3>
+<p>Hayso is a wellbeing and logging app for adults who are before, on, or after a weight management treatment such as GLP-1 medication. It helps you log meals, water, activity, symptoms and treatment days, see your progress, and get general information about food, movement and habits.</p>
+<h3>What Hayso is not</h3>
+<ul>
+<li>Hayso is <strong>not a medical device</strong>. It does not diagnose, treat, cure, monitor or prevent any disease or condition.</li>
+<li>Hayso does <strong>not prescribe, supply or recommend any medicine</strong>, and it never gives advice on doses, starting, stopping or changing treatment.</li>
+<li>Hayso is <strong>not a doctor, nurse, pharmacist, dietitian or personal trainer</strong>, and it does not replace one.</li>
+<li>Hayso is <strong>not an emergency or monitoring service</strong>. Nobody watches your logs around the clock.</li>
+</ul>
+<h3>Everything is general information</h3>
+<p>All content in Hayso is general information, written for a general audience. This includes your Hayso plan, Hayso score, targets, reminders, meal ideas, recipes, workouts, articles, progress charts, food and nutrition estimates, and every reply from hayso, our in-app guide.</p>
+<p>Hayso uses the answers you give to choose and arrange this information. That does not make it medical advice or a personal recommendation. We use information-only language on purpose: words like "aim for", "try" or "you could" describe general options, not instructions for you.</p>
+<h3>You are responsible for your own decisions</h3>
+<ul>
+<li>How you understand and use the information in Hayso is your own choice and your own responsibility.</li>
+<li>Always follow the advice of your doctor, prescriber or clinic. Speak to them <strong>before</strong> you change your treatment, diet, fluid intake or activity, and if anything in Hayso does not seem right for you.</li>
+<li>Never ignore professional medical advice, or delay getting it, because of something you read or logged in Hayso.</li>
+<li>If you have a health condition, are pregnant or breastfeeding, have had an eating disorder, or are unsure whether exercise is safe for you, get advice from a health professional before you follow any meal idea or workout.</li>
+</ul>
+<h3>Food and nutrition</h3>
+<ul>
+<li>Calories, protein and other nutrition figures are <strong>estimates</strong>, including those made from photos or voice notes. They can be wrong. Check them before you rely on them.</li>
+<li>Recipes and meal ideas may contain allergens. Always check ingredients and food labels yourself. Hayso cannot guarantee a meal is safe for your allergies or intolerances.</li>
+</ul>
+<h3>Exercise</h3>
+<ul>
+<li>Exercise carries a risk of injury. Work at your own level, warm up, and use equipment safely.</li>
+<li>Stop straight away and get help if you feel pain, chest tightness, dizziness, faintness or severe breathlessness.</li>
+<li>Suggested weights, reps and effort levels are general starting points only.</li>
+</ul>
+<h3>Getting help</h3>
+<ul>
+<li><strong>In an emergency, call 999.</strong></li>
+<li><strong>For urgent medical advice, call NHS 111</strong> or visit 111.nhs.uk.</li>
+<li>If you are struggling with your mental health, you can call <strong>Samaritans free on 116 123</strong>, any time.</li>
+<li>Questions about your medicine or symptoms should go to your prescriber, pharmacist or GP.</li>
+</ul>
+
+<h2 id="hayso-ai">5. hayso, our AI guide</h2>
+<ul>
+<li>hayso is an AI guide. It is a computer program, not a person or a health professional.</li>
+<li>It can help you find your way around the app, log things by chat, and give general food, activity and habit information.</li>
+<li>It will not answer questions about medicines, doses or symptoms. It will point you to your prescriber or clinic instead, or pass your question to your clinic if you have linked one.</li>
+<li>AI can make mistakes, misunderstand you, or give information that is out of date or not right for you. Use your own judgement, and check anything important with a professional.</li>
+<li>Do not put other people's personal information into hayso.</li>
+</ul>
+
+<h2 id="clinics">6. Linking to a clinic</h2>
+<ul>
+<li>If your clinic gives you a code, you can link Hayso to it and choose what to share. You can change this or unlink at any time in the app.</li>
+<li>Your clinic is responsible for your care and for how and when it responds to anything you share. We do not control your clinic, and we do not promise a reply within any set time.</li>
+<li>Information you share with a clinic becomes part of that clinic's records too. It is then also covered by the clinic's own privacy notice.</li>
+</ul>
+
+<h2 id="subscriptions">7. Subscriptions and payments</h2>
+<ul>
+<li>Hayso needs a paid subscription. The price, how often you pay, and any free trial or introductory price are shown clearly before you buy.</li>
+<li>You pay through the Apple App Store or Google Play. They take the payment and handle billing, not us.</li>
+<li><strong>Subscriptions renew automatically</strong> at the end of each period until you cancel.</li>
+<li><strong>Free trials:</strong> if you do not cancel before the trial ends, your paid subscription starts and you are charged.</li>
+<li><strong>To cancel</strong>, go to your subscriptions in your App Store or Google Play settings. Cancelling stops the next renewal. You keep access until the end of the period you have paid for.</li>
+<li>Deleting the app or your Hayso account does not cancel your subscription. Please cancel it in your store settings too.</li>
+<li>Refunds are handled by Apple or Google under their own policies.</li>
+<li>If your clinic pays for your access, the clinic's agreement with us applies instead.</li>
+<li>We may change our prices. We will tell you before a change affects you, and you can cancel before it does.</li>
+</ul>
+<p>Your legal rights as a consumer are not affected by anything in this section.</p>
+
+<h2 id="fair-use">8. Using Hayso fairly</h2>
+<p>You agree not to:</p>
+<ul>
+<li>break the law, or use Hayso for anything harmful, abusive or fraudulent;</li>
+<li>share your account, or use someone else's;</li>
+<li>try to get into other people's data, or into parts of Hayso you are not allowed to use;</li>
+<li>copy, sell, scrape, reverse-engineer or interfere with the app, website or our systems;</li>
+<li>upload anything unlawful, harmful or that you do not have the right to share.</li>
+</ul>
+
+<h2 id="content">9. Your content and ours</h2>
+<ul>
+<li><strong>Your content is yours.</strong> You own what you log, write and upload. You give us permission to store and use it only to run Hayso for you, as our <a href="/privacy">Privacy Policy</a> explains.</li>
+<li><strong>Our content is ours.</strong> The app, website, design, the Hayso name and logo, and our recipes, workouts and articles belong to us or the people we license them from. You may use them for your own personal, non-commercial use only.</li>
+<li>Some general information is based on trusted public sources, such as the NHS. We write it in our own words and link to the source where we can. Those sources are not responsible for Hayso.</li>
+</ul>
+
+<h2 id="other-services">10. Other services</h2>
+<p>Hayso may link to other websites or work with other services, such as app stores, sign-in with Apple or Google, and your phone's own features. We do not control them and we are not responsible for them. Their own terms apply.</p>
+
+<h2 id="changes-service">11. Changes and availability</h2>
+<ul>
+<li>We keep improving Hayso, so features and content may change.</li>
+<li>We aim to keep Hayso running smoothly, but we cannot promise it will always be available or free of errors. We may need to pause it for maintenance or fixes.</li>
+<li>If a change takes away something important you have paid for, we will tell you, and you can cancel.</li>
+</ul>
+
+<h2 id="ending">12. Ending your account</h2>
+<ul>
+<li>You can delete your account at any time in the app: <strong>Profile, then Settings, then Delete account</strong>. You can also ask us by email. See <a href="/delete-account">Delete your account</a>.</li>
+<li>We may suspend or close an account that seriously or repeatedly breaks these terms, or to protect you, other people or Hayso. We will tell you why, unless the law stops us.</li>
+</ul>
+
+<h2 id="faults">13. If something goes wrong with the app</h2>
+<p>If Hayso is faulty, you have legal rights under the Consumer Rights Act 2015. Please tell us first at <a href="mailto:hello@haysohealth.com">hello@haysohealth.com</a> so we can try to put it right. If digital content we supply damages your device or other digital content because we did not use reasonable care and skill, we will repair the damage or pay you fair compensation.</p>
+
+<h2 id="liability">14. Our responsibility to you</h2>
+<h3>What we will always be responsible for</h3>
+<p>Nothing in these terms limits or excludes our liability for death or personal injury caused by our negligence, for fraud or fraudulent misrepresentation, or for anything else that the law does not allow us to limit or exclude. Nothing in these terms affects your legal rights as a consumer.</p>
+<h3>What we are not responsible for</h3>
+<p>Because Hayso gives general information and not medical advice, and as far as the law allows, we are not responsible for any loss, harm or damage that comes from:</p>
+<ul>
+<li>how you understand, interpret or act on any information in Hayso, including your plan, score, targets, meal ideas, workouts, nutrition estimates and anything hayso says;</li>
+<li>any decision about your health, treatment, diet or exercise made by you, or by anyone else, based on information in Hayso;</li>
+<li>you choosing not to get, or delaying, professional medical advice;</li>
+<li>information you give us that is wrong or incomplete;</li>
+<li>anything your clinic, doctor or prescriber does or does not do;</li>
+<li>other services and websites we do not control;</li>
+<li>events outside our reasonable control, such as network or app store outages.</li>
+</ul>
+<p>We are also not responsible for losses that were not foreseeable when you agreed to these terms, or for business losses such as lost profit or lost opportunity. Hayso is for personal use only.</p>
+<h3>Our maximum responsibility</h3>
+<p>Where we are responsible for a loss, and the law allows a limit, our total responsibility to you is limited to the greater of: the amount you paid for Hayso in the 12 months before the event, or £100.</p>
+
+<h2 id="complaints">15. Questions and complaints</h2>
+<p>If you have a question or complaint, email <a href="mailto:hello@haysohealth.com">hello@haysohealth.com</a>. We will acknowledge it and aim to sort it out quickly. For complaints about your personal data, see our <a href="/privacy#complaints">Privacy Policy</a>.</p>
+
+<h2 id="changes-terms">16. Changes to these terms</h2>
+<p>We may update these terms, for example when the law or Hayso changes. We will tell you about important changes in the app or by email before they take effect. If you keep using Hayso after that, the new terms apply. If you do not accept them, you can cancel and delete your account.</p>
+
+<h2 id="law">17. Law and courts</h2>
+<p>These terms are governed by the law of England and Wales. You can bring a claim in the courts of England and Wales. If you live in Scotland or Northern Ireland, you can also bring a claim in the courts where you live.</p>
+<p>If a court decides that part of these terms cannot be enforced, the rest still applies. If we do not enforce a term straight away, we can still enforce it later.</p>
+
 </main>
-
-<footer class="footer">
-  <div class="footer-inner">
-    <nav class="footer-links" aria-label="Legal">
-      <a href="/">Home</a>
-      <a href="/privacy">Privacy</a>
-      <a href="/cookies">Cookies</a>
-      <a href="/terms">Terms</a>
-      <button type="button" id="cookie-settings-link">Cookie settings</button>
-    </nav>
-    <p>hayso supports care delivered by a registered clinician. It does not replace medical advice. &copy; <span id="year">2026</span> hayso</p>
-  </div>
-</footer>
-
-<script>document.getElementById('year').textContent = new Date().getFullYear();</script>
+<footer><div>
+<nav aria-label="Footer"><a href="/">Home</a><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="/cookies">Cookies</a><a href="/delete-account">Delete account</a><button type="button" id="cookie-settings-link">Cookie settings</button></nav>
+<p>Hayso gives general information and support only. It is not medical advice and does not replace your doctor, prescriber or clinic. In an emergency call 999. For urgent advice call NHS 111.</p>
+<p>&copy; <span id="year">2026</span> Hayso Health Limited</p>
+</div></footer>
+<script>document.getElementById('year').textContent=new Date().getFullYear();</script>
 <script src="/cookie-consent.js" defer></script>
-
 </body>
 </html>
