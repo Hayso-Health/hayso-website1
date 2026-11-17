@@ -117,9 +117,20 @@ tr:last-child td{border-bottom:0}
   .side .mark{padding:4px 8px}.side .foot{margin:0 0 0 auto}
   .nav{width:auto}
   main{margin:0;padding:8px 16px 40px}
-  .kpis{grid-template-columns:repeat(2,1fr)}.grid2{grid-template-columns:1fr}
+  .kpis{grid-template-columns:repeat(2,1fr)}.grid2{grid-template-columns:1fr}.grid2e{grid-template-columns:1fr}.kpis.k3{grid-template-columns:1fr}
   .wide{overflow-x:auto}
 }
+.sec{display:flex;align-items:baseline;gap:12px;margin:30px 0 0}.sec h2{font-size:22px;letter-spacing:-.02em}
+.grid2e{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+.kpis.k3{grid-template-columns:repeat(3,1fr);margin-top:14px}
+.hb2{display:grid;grid-template-columns:minmax(120px,38%) 1fr auto;gap:10px;align-items:center;padding:7px 0;font-size:14px}
+.hb2-l{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.hb2-t{height:10px;border-radius:5px;background:rgba(24,33,31,.06);overflow:hidden}.hb2-t i{display:block;height:100%;border-radius:5px}
+.hb2-v{font-weight:700;white-space:nowrap}.hb2-v span{font-weight:400;color:var(--muted);font-size:12px}
+.fn{display:grid;grid-template-columns:minmax(130px,32%) 1fr 118px;gap:10px;align-items:center;padding:7px 0;font-size:14px}
+.fn-t{height:22px;border-radius:8px;background:rgba(24,33,31,.05);overflow:hidden}.fn-t i{display:block;height:100%;border-radius:8px;background:linear-gradient(90deg,var(--blue),var(--lilac),var(--pink))}
+.fn-v{font-weight:700;text-align:right}.fn-v span{display:block;font-weight:400;font-size:12px;color:var(--muted)}.fn-v span.bad{color:#B4476F;font-weight:600}
+.stack{width:100%;max-width:26px;display:flex;flex-direction:column;border-radius:8px 8px 4px 4px;overflow:hidden;min-height:3px;background:rgba(24,33,31,.06)}.stack i{display:block;min-height:0}
+.money{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.money b{font-size:26px;letter-spacing:-.02em}
 </style>
 </head>
 <body>
@@ -215,9 +226,9 @@ async function start() {
 }
 
 async function load() {
-  const [o, u, f, c, er, us] = await Promise.all([SB.rpc('admin_overview'), SB.rpc('admin_users'), SB.rpc('admin_feedback_v3'), SB.rpc('admin_chats'), SB.rpc('admin_errors'), SB.rpc('admin_usage')]);
+  const [o, u, f, c, er, us, ins] = await Promise.all([SB.rpc('admin_overview'), SB.rpc('admin_users'), SB.rpc('admin_feedback_v3'), SB.rpc('admin_chats'), SB.rpc('admin_errors'), SB.rpc('admin_usage'), SB.rpc('admin_insights', { p_days: insDays })]);
   const fb = f.error ? ((await SB.rpc('admin_feedback_v2')).data || []) : (f.data || []);
-  data = { o: o.data || {}, users: u.data || [], fb, chats: c.data || [], errors: er.data || [], usage: us.data || {} };
+  data = { o: o.data || {}, users: u.data || [], fb, chats: c.data || [], errors: er.data || [], usage: us.data || {}, ins: ins.error ? null : ins.data, insErr: !!ins.error };
   const e7 = data.usage.errors_7d || 0; $('#erN').textContent = e7; $('#erN').style.display = e7 ? 'inline-block' : 'none';
   const n = data.fb.filter((x) => x.status === 'new' && !noise(x)).length;
   $('#fbN').textContent = n; $('#fbN').style.display = n ? 'inline-block' : 'none';
@@ -273,34 +284,7 @@ function kpi(label, v, s) { return `<div class="kpi glass"><div class="small">${
 
 function render() {
   const o = data.o, m = $('#main');
-  if (view === 'overview') {
-    const subs = o.subs || {}, paying = (subs.monthly || 0) + (subs.annual || 0);
-    const days = o.daily || [], max = Math.max(1, ...days.map((d) => d.active), ...days.map((d) => d.signups));
-    const realFb = data.fb.filter((x) => !noise(x));
-    m.innerHTML = head('Overview', 'Updated ' + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })) + `
-      <div class="kpis">
-        ${kpi('Total users', fmt(o.users), `+${fmt(o.users_7d)} this week`)}
-        ${kpi('Active today', fmt(o.active_today), `${fmt(o.active_7d)} this week · ${fmt(o.active_30d)} this month`)}
-        ${kpi('Paying subscribers', fmt(paying), `${fmt(subs.trial || 0)} on trial · ${fmt(subs.clinic || 0)} via clinics`)}
-        ${kpi('New feedback', fmt(realFb.filter((x) => x.status === 'new').length), `${fmt(realFb.length)} in total`)}
-        ${kpi('Finished setup', fmt(o.onboarded), `of ${fmt(o.users)} sign-ups`)}
-        ${kpi('hayso chats', fmt(o.hayso_msgs_7d), `this week · ${fmt(o.hayso_msgs)} in total`)}
-        ${kpi('App errors', fmt(data.usage.errors_7d), `this week · ${fmt(data.errors.length)} different ones`)}
-        ${kpi('Website waitlist', fmt(o.waitlist), `${fmt(o.referrals)} friend invites sent`)}
-      </div>
-      <div class="grid2">
-        <div class="panel glass"><h2>Last 14 days</h2>
-          <div class="chart">${days.map((d) => `<div class="bar" title="${d.day}: ${d.active} active, ${d.signups} sign-ups, ${d.actions} logs">
-            <div class="b" style="height:${(d.active / max) * 130}px"></div><div class="b2" style="height:${(d.signups / max) * 130}px"></div>
-            <span>${new Date(d.day).getDate()}</span></div>`).join('')}</div>
-          <div class="legend"><span><i style="background:var(--lilac)"></i>Active users</span><span><i style="background:var(--pink)"></i>Sign-ups</span></div>
-        </div>
-        <div class="panel glass"><h2>Latest feedback</h2>
-          ${realFb.slice(0, 5).map((x) => `<div style="padding:8px 0;border-bottom:1px solid var(--line)"><span class="chip ${x.type}">${x.type}</span> <span class="small">${when(x.created_at)}</span><div style="margin-top:4px;font-size:14px">${esc(x.text)}</div></div>`).join('') || '<div class="empty">Nothing yet</div>'}
-          <button class="btn ghost" style="margin-top:12px;padding:8px 16px" onclick="go('feedback')">See all</button>
-        </div>
-      </div>`;
-  }
+  if (view === 'overview') return data.ins ? insRender(m) : overviewBasic(m, o, data.insErr ? '<div class="panel glass" style="margin:0 0 14px">The new insights aren’t switched on yet. The database update needs applying.</div>' : '');
   if (view === 'users') {
     const q = userQ.toLowerCase(), wk = Date.now() - 7 * 864e5;
     const row = (u) => `<tr><td><b>${u.email ? esc(u.email) : 'Guest'}</b><div class="small">${short(u.id)}${u.anonymous ? ' · not signed up yet' : ''}</div></td>
@@ -406,6 +390,150 @@ function render() {
       || '<div class="panel glass empty">No chats yet</div>');
   }
 }
+function overviewBasic(m, o, note) {
+    const subs = o.subs || {}, paying = (subs.monthly || 0) + (subs.annual || 0);
+    const days = o.daily || [], max = Math.max(1, ...days.map((d) => d.active), ...days.map((d) => d.signups));
+    const realFb = data.fb.filter((x) => !noise(x));
+    m.innerHTML = head('Overview', 'Updated ' + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })) + (note || '') + `
+      <div class="kpis">
+        ${kpi('Total users', fmt(o.users), `+${fmt(o.users_7d)} this week`)}
+        ${kpi('Active today', fmt(o.active_today), `${fmt(o.active_7d)} this week · ${fmt(o.active_30d)} this month`)}
+        ${kpi('Paying subscribers', fmt(paying), `${fmt(subs.trial || 0)} on trial · ${fmt(subs.clinic || 0)} via clinics`)}
+        ${kpi('New feedback', fmt(realFb.filter((x) => x.status === 'new').length), `${fmt(realFb.length)} in total`)}
+        ${kpi('Finished setup', fmt(o.onboarded), `of ${fmt(o.users)} sign-ups`)}
+        ${kpi('hayso chats', fmt(o.hayso_msgs_7d), `this week · ${fmt(o.hayso_msgs)} in total`)}
+        ${kpi('App errors', fmt(data.usage.errors_7d), `this week · ${fmt(data.errors.length)} different ones`)}
+        ${kpi('Website waitlist', fmt(o.waitlist), `${fmt(o.referrals)} friend invites sent`)}
+      </div>
+      <div class="grid2">
+        <div class="panel glass"><h2>Last 14 days</h2>
+          <div class="chart">${days.map((d) => `<div class="bar" title="${d.day}: ${d.active} active, ${d.signups} sign-ups, ${d.actions} logs">
+            <div class="b" style="height:${(d.active / max) * 130}px"></div><div class="b2" style="height:${(d.signups / max) * 130}px"></div>
+            <span>${new Date(d.day).getDate()}</span></div>`).join('')}</div>
+          <div class="legend"><span><i style="background:var(--lilac)"></i>Active users</span><span><i style="background:var(--pink)"></i>Sign-ups</span></div>
+        </div>
+        <div class="panel glass"><h2>Latest feedback</h2>
+          ${realFb.slice(0, 5).map((x) => `<div style="padding:8px 0;border-bottom:1px solid var(--line)"><span class="chip ${x.type}">${x.type}</span> <span class="small">${when(x.created_at)}</span><div style="margin-top:4px;font-size:14px">${esc(x.text)}</div></div>`).join('') || '<div class="empty">Nothing yet</div>'}
+          <button class="btn ghost" style="margin-top:12px;padding:8px 16px" onclick="go('feedback')">See all</button>
+        </div>
+      </div>`;
+  }
+
+// ---------- Overview: the business and in-app insights dashboard (17 Nov) ----------
+// People, money, usage, funnels, retention. Money is an estimate from list prices until RevenueCat is connected.
+let insDays = 14;
+async function insLoad(n) { insDays = n; const r = await SB.rpc('admin_insights', { p_days: n }); if (!r.error) data.ins = r.data; render(); }
+const pct = (a, b) => (b ? Math.round((a / b) * 100) : 0);
+const gbp = (v) => '£' + Number(v || 0).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const dd = (d) => new Date(d).getDate();
+function lineChart(vals, labels, id, tip) {
+  const W = 600, H = 170, n = vals.length, max = Math.max(1, ...vals), min = Math.min(...vals), lo = min === max ? 0 : Math.max(0, min - (max - min) * 0.15);
+  const x = (i) => (n < 2 ? W / 2 : 8 + (i / (n - 1)) * (W - 16)), y = (v) => 12 + (1 - (v - lo) / Math.max(1, max - lo)) * (H - 40);
+  const pts = vals.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`);
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block" role="img" aria-label="${esc(tip)}">
+    <defs><linearGradient id="${id}s" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#5FB4F0"/><stop offset=".5" stop-color="#9C8CF2"/><stop offset="1" stop-color="#F29BC0"/></linearGradient>
+    <linearGradient id="${id}f" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9C8CF2" stop-opacity=".28"/><stop offset="1" stop-color="#9C8CF2" stop-opacity="0"/></linearGradient></defs>
+    ${n > 1 ? `<path d="M${pts.join(' L')} L${x(n - 1)},${H - 24} L${x(0)},${H - 24} Z" fill="url(#${id}f)"/><path d="M${pts.join(' L')}" fill="none" stroke="url(#${id}s)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>` : ''}
+    ${vals.map((v, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="${i === n - 1 ? 5 : 2.5}" fill="#fff" stroke="#9C8CF2" stroke-width="2"><title>${esc(labels[i])}: ${fmt(v)}</title></circle>`).join('')}
+    ${labels.map((l, i) => (n <= 16 || i % Math.ceil(n / 12) === 0 ? `<text x="${x(i).toFixed(1)}" y="${H - 6}" text-anchor="middle" font-size="11" fill="#9AA3A0">${dd(l)}</text>` : '')).join('')}</svg>`;
+}
+function hbars(rows, color) { // rows: [label, value, sub]
+  const max = Math.max(1, ...rows.map((r) => r[1]));
+  return rows.map((r) => `<div class="hb2"><div class="hb2-l" title="${esc(r[0])}">${esc(r[0])}</div><div class="hb2-t"><i style="width:${Math.max(2, (r[1] / max) * 100)}%;background:${color || 'linear-gradient(90deg,var(--blue),var(--lilac))'}"></i></div><div class="hb2-v">${fmt(r[1])}${r[2] ? `<span>${esc(r[2])}</span>` : ''}</div></div>`).join('') || '<div class="small">Nothing yet</div>';
+}
+function funnel(steps) {
+  const top = Math.max(1, steps[0]?.users || 0);
+  return steps.map((st, i) => { const prev = i ? steps[i - 1].users : st.users; const keep = i ? pct(st.users, prev) : 100;
+    return `<div class="fn"><div class="fn-l">${i + 1}. ${esc(st.label)}</div><div class="fn-t"><i style="width:${Math.max(st.users ? 3 : 0, (st.users / top) * 100)}%"></i></div>
+      <div class="fn-v">${fmt(st.users)}${i ? `<span class="${keep < 60 && prev ? 'bad' : ''}">${prev ? keep + '% carried on' : '–'}</span>` : '<span>started</span>'}</div></div>`; }).join('');
+}
+const PAGE = { '/': 'Home', '/support': 'Support', '/progress': 'Progress', '/community': 'Community', '/profile': 'Profile', '/workouts': 'Workouts', '/session/:id': 'A workout session',
+  '/training-type': 'Choose your style', '/workouts/welcome': 'Plan welcome', '/workouts/diet': 'Choose diet theme', '/workouts/tailor': 'hayso tailor chat', '/workouts/creating': 'Creating plan',
+  '/workouts/ready': 'Plan ready', '/workouts/plan': 'Your workout and diet plan', '/workouts/adjust': 'Adjust plan', '/photos': 'Progress photos', '/log': 'Log menu', '/log/water': 'Log water',
+  '/log/workout': 'Log workout', '/log/jab': 'Log jab', '/log/symptoms': 'Log symptoms', '/meal/log': 'Log a meal', '/meal/camera': 'Meal camera', '/recipes': 'Recipes', '/recipes/:id': 'A recipe',
+  '/check-in': 'Weekly check-in', '/plan': 'My plan (treatment)', '/settings': 'Settings', '/coach': 'hayso chat', '/help': 'Urgent help', '/paywall': 'Paywall', '/welcome': 'Welcome (first run)' };
+const pageName = (n) => PAGE[n] || n;
+function insRender(m) {
+  const o = data.o, x = data.ins, subs = x.subs || o.subs || {}, paying = (subs.monthly || 0) + (subs.annual || 0);
+  const g = x.growth || [], dly = x.daily || [], mrr = Number(x.mrr_est || 0);
+  const churn = x.churn || { of: 0, lost: 0 }, b1 = x.back_next_day || { of: 0, back: 0 }, b7 = x.back_week || { of: 0, back: 0 };
+  const newN = g.reduce((a, d) => a + d.signups, 0), maxU = Math.max(1, ...dly.map((d) => d.users));
+  const realFb = data.fb.filter((f) => !noise(f)), hrs = x.hours || [], maxH = Math.max(1, ...hrs.map((h) => h.n));
+  const range = `<div class="tabs" style="margin:0">${[7, 14, 30].map((n) => `<button class="${insDays === n ? 'on' : ''}" onclick="insLoad(${n})">${n} days</button>`).join('')}</div>`;
+  const sec = (t, sub) => `<div class="sec"><h2>${t}</h2>${sub ? `<span class="small">${sub}</span>` : ''}</div>`;
+  m.innerHTML = `<div class="top"><h1>Overview</h1>${range}<span class="small">Updated ${new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span><button class="btn ghost" onclick="load()" style="padding:8px 16px">Refresh</button></div>
+    <div class="kpis">
+      ${kpi('Total users', fmt(x.total_users ?? o.users), `+${fmt(newN)} in ${x.days} days`)}
+      ${kpi('Active today', fmt(o.active_today), `${fmt(o.active_7d)} this week · ${fmt(o.active_30d)} this month`)}
+      ${kpi('Paying subscribers', fmt(paying), `${fmt(subs.trial || 0)} on trial · ${fmt(subs.clinic || 0)} via clinics`)}
+      ${kpi('Monthly recurring revenue', gbp(mrr), 'Estimate from list prices')}
+      ${kpi('Annual recurring revenue', gbp(mrr * 12), 'MRR × 12')}
+      ${kpi('Churn', churn.of ? pct(churn.lost, churn.of) + '%' : '–', churn.of ? `${fmt(churn.lost)} of ${fmt(churn.of)} stopped opening the app` : 'Needs 2 weeks of use')}
+      ${kpi('Came back next day', b1.of ? pct(b1.back, b1.of) + '%' : '–', b1.of ? `${fmt(b1.back)} of ${fmt(b1.of)} new people` : 'No new people yet')}
+      ${kpi('Finished setup', fmt(o.onboarded), `of ${fmt(o.users)} sign-ups`)}
+    </div>
+
+    ${sec('Growth', `Last ${x.days} days`)}
+    <div class="grid2e">
+      <div class="panel glass"><h2>Total users</h2>${lineChart(g.map((d) => d.total), g.map((d) => d.day), 'gr', 'Total users by day')}
+        <div class="legend"><span>${fmt(newN)} new sign-ups in this period</span></div></div>
+      <div class="panel glass"><h2>People using the app each day</h2>
+        <div class="chart">${dly.map((d) => `<div class="bar" title="${d.day}: ${d.users} people (${d.ios} iPhone, ${d.android} Android), ${d.screens} page views">
+          <div class="stack" style="height:${(d.users / maxU) * 130}px"><i style="flex:${d.android || 0};background:var(--pink)"></i><i style="flex:${d.ios || 0};background:var(--lilac)"></i><i style="flex:${Math.max(0, d.users - d.ios - d.android)};background:var(--blue)"></i></div>
+          <span>${dd(d.day)}</span></div>`).join('')}</div>
+        <div class="legend"><span><i style="background:var(--lilac)"></i>iPhone</span><span><i style="background:var(--pink)"></i>Android</span><span><i style="background:var(--blue)"></i>Other</span></div></div>
+    </div>
+
+    ${sec('Money', 'Estimate until RevenueCat is connected')}
+    <div class="grid2e">
+      <div class="panel glass"><h2>Subscriptions</h2>${hbars([['Monthly (£9.99)', subs.monthly || 0], ['Annual (£54.99)', subs.annual || 0], ['On free trial', subs.trial || 0], ['Via a clinic', subs.clinic || 0], ['Not subscribed', subs.none || 0]], 'linear-gradient(90deg,var(--lilac),var(--pink))')}</div>
+      <div class="panel glass"><h2>Revenue</h2>
+        <div class="money"><div><div class="small">Monthly recurring</div><b>${gbp(mrr)}</b></div><div><div class="small">Annual recurring</div><b>${gbp(mrr * 12)}</b></div><div><div class="small">Turnover to date</div><b>–</b></div></div>
+        <div class="small" style="margin-top:12px">Real payments, refunds, trial conversions and turnover come from RevenueCat. They show here once the RevenueCat key is added.</div></div>
+    </div>
+
+    ${sec('How people use the app', `${fmt(x.users)} people · ${fmt(x.screens)} page views · ${fmt(x.actions_n)} logs and taps`)}
+    <div class="kpis k3">
+      ${kpi('Days used', x.avg_days_per_user ?? 0, `per person in ${x.days} days`)}
+      ${kpi('Pages per visit', x.avg_screens_per_visit ?? 0, 'a visit is one person, one day')}
+      ${kpi('Minutes per visit', x.avg_minutes_per_visit ?? 0, 'first tap to last tap')}
+    </div>
+    <div class="grid2e">
+      <div class="panel glass"><h2>Where they spend time</h2>${hbars((x.areas || []).map((a) => [a.area, a.views, ` · ${fmt(a.users)} people`]))}</div>
+      <div class="panel glass"><h2>What they do</h2>${hbars((x.actions || []).slice(0, 8).map((a) => [a.name.replace(/_/g, ' '), a.times, ` · ${fmt(a.users)} people`]), 'linear-gradient(90deg,var(--lilac),var(--pink))')}</div>
+    </div>
+    <div class="grid2e">
+      <div class="panel glass"><h2>Most visited pages</h2>${hbars((x.screens_top || []).slice(0, showN.pg || 5).map((p) => [pageName(p.name), p.views, ` · ${fmt(p.users)} people`]))}${moreBtn('pg', (x.screens_top || []).length)}</div>
+      <div class="panel glass"><h2>Time of day</h2>
+        <div class="chart" style="height:150px;gap:3px">${hrs.map((h) => `<div class="bar" title="${h.h}:00: ${h.n} page views"><div class="b" style="height:${(h.n / maxH) * 110}px;max-width:none"></div><span style="min-height:14px">${h.h % 3 === 0 ? h.h : ''}</span></div>`).join('')}</div>
+        <div class="legend"><span>Page views by hour, UK time</span></div></div>
+    </div>
+
+    ${sec('Where people drop out', 'People who reached each step')}
+    <div class="grid2e">
+      <div class="panel glass"><h2>Plan setup with hayso</h2>${funnel(x.plan_funnel || [])}</div>
+      <div class="panel glass"><h2>First-run setup</h2>${funnel(x.setup_funnel || [])}</div>
+    </div>
+
+    ${sec('Coming back', '')}
+    <div class="grid2e">
+      <div class="panel glass"><h2>Retention and churn</h2>
+        ${hbars([['Back the next day', pct(b1.back, b1.of), `% · ${fmt(b1.back)} of ${fmt(b1.of)}`], ['Still here a week on', pct(b7.back, b7.of), `% · ${fmt(b7.back)} of ${fmt(b7.of)}`], ['Stopped opening it', pct(churn.lost, churn.of), `% · ${fmt(churn.lost)} of ${fmt(churn.of)}`]], 'linear-gradient(90deg,var(--blue),var(--pink))')}</div>
+      <div class="panel glass"><h2>Last page before leaving</h2>${hbars((x.exits || []).slice(0, 6).map((e) => [pageName(e.name), e.times, ' visits ended here']), 'linear-gradient(90deg,var(--pink),var(--lilac))')}</div>
+    </div>
+
+    ${sec('Phones and versions', '')}
+    <div class="grid2e">
+      <div class="panel glass"><h2>Phones</h2>${hbars((x.platforms || []).map((p) => [p.platform === 'ios' ? 'iPhone' : p.platform === 'android' ? 'Android' : p.platform, p.users, ' people']))}</div>
+      <div class="panel glass"><h2>App versions in use</h2>${hbars((x.versions || []).map((v) => ['v' + v.version, v.users, ` · last seen ${ago(v.last_at)}`]))}</div>
+    </div>
+
+    ${sec('Latest feedback', `${fmt(realFb.filter((f) => f.status === 'new').length)} new`)}
+    <div class="panel glass" style="margin-top:0">
+      ${realFb.slice(0, 5).map((f) => `<div style="padding:8px 0;border-bottom:1px solid var(--line)"><span class="chip ${f.type}">${f.type}</span> <span class="small">${when(f.created_at)}</span><div style="margin-top:4px;font-size:14px">${esc(f.text)}</div></div>`).join('') || '<div class="empty">No feedback yet</div>'}
+      <button class="btn ghost" style="margin-top:12px;padding:8px 16px" onclick="go('feedback')">See all</button></div>`;
+}
+
 // ---------- App health (17 Nov) ----------
 // Server checks run every 5 minutes. Phones say start / ready / crash. Answers "is the app down, and why?"
 const HNAMES = { database: 'Database', logins: 'Sign-in', hayso_chat: 'hayso chat', meal_scan: 'Meal photo scan', ai: 'AI (Claude)', sentry: 'Sentry crashes' };
