@@ -81,6 +81,26 @@ tr:last-child td{border-bottom:0}
 .a{margin-top:6px;color:var(--muted);font-size:14px;white-space:pre-wrap}
 .empty{padding:30px;text-align:center;color:var(--muted)}
 .row{display:flex;gap:10px;align-items:center}
+/* fold-out cards (17 Nov): groups start closed, tap to open, 5 rows then Show more */
+.fold{padding:0;margin-top:12px;overflow:hidden}
+.fold-h{display:flex;align-items:center;gap:14px;width:100%;padding:18px 22px;border:0;background:none;cursor:pointer;text-align:left}
+.fold-h:hover{background:rgba(255,255,255,.4)}
+.fold-h .t{font-size:18px;font-weight:800;letter-spacing:-.02em}
+.fold-h .sub{font-size:13px;color:var(--muted)}
+.fold-h .cnt{margin-left:auto;font-size:22px;font-weight:800;letter-spacing:-.03em}
+.chev{width:28px;height:28px;flex:none;border-radius:50%;display:grid;place-items:center;background:rgba(24,33,31,.05);transition:transform .2s}
+.fold.open .fold-h .chev,.fbi.open .fbi-h .chev{transform:rotate(90deg)}
+.fbi-h .chev{width:24px;height:24px}
+.fold-b{padding:0 22px 14px}
+.tdot{width:12px;height:12px;border-radius:50%;flex:none}
+.newn{font-size:12px;font-weight:700;color:#fff;background:var(--lilac);border-radius:99px;padding:1px 8px}
+.more{display:block;margin:10px auto 2px;padding:7px 18px;font-size:13px}
+.fbi{padding:12px 0;border-bottom:1px solid var(--line)}
+.fbi:last-child{border-bottom:0}
+.fbi-h{display:flex;align-items:center;gap:10px;cursor:pointer}
+.fbi-h .txt{flex:1;min-width:0;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fbi.open .fbi-h .txt{white-space:normal}
+.fbi-b{padding:8px 0 4px 0}
 @media (max-width:900px){
   .side{position:static;width:auto;margin:16px;flex-direction:row;flex-wrap:wrap;align-items:center}
   .side .mark{padding:4px 8px}.side .foot{margin:0 0 0 auto}
@@ -192,6 +212,26 @@ async function load() {
   render();
 }
 let betaOnly = false, fbWho = null;
+const openSet = new Set(), showN = {};
+const tog = (k) => { openSet.has(k) ? openSet.delete(k) : openSet.add(k); render(); };
+const moreBtn = (k, total) => { const n = showN[k] || 5; return total > n ? `<button class="btn ghost more" onclick="showN['${k}']=${n + 10};render()">Show ${Math.min(10, total - n)} more</button>` : ''; };
+const chev = '<span class="chev"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M4 2l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
+function fold(k, dot, title, sub, count, extra, body) {
+  const on = openSet.has(k);
+  return `<div class="glass fold${on ? ' open' : ''}"><button class="fold-h" onclick="tog('${k}')">${dot ? `<span class="tdot" style="background:${dot}"></span>` : ''}
+    <div><div class="t">${title}</div>${sub ? `<div class="sub">${sub}</div>` : ''}</div>${extra || ''}<span class="cnt">${count}</span>${chev}</button>
+    ${on ? `<div class="fold-b">${body}</div>` : ''}</div>`;
+}
+// feedback topics, matched on the words people use. First match wins.
+const TOPICS = [
+  ['meals', 'Meals and portions', 'linear-gradient(135deg,#F7B6DA,#DE6CAE)', /meal|food|recipe|portion|gram|protein|calorie|breakfast|lunch|dinner|snack|eat|ingredient/i],
+  ['logging', 'Logging', 'linear-gradient(135deg,#FBDDA2,#DE9C34)', /log|water|weigh|kg|track|symptom|side effect|jab|dose|pen/i],
+  ['move', 'Workouts and movement', 'linear-gradient(135deg,#A8E6DA,#2FAE9A)', /workout|exercise|session|move|step|walk|gym|muscle/i],
+  ['chat', 'hayso chat and support', 'linear-gradient(135deg,#D6C6FA,#9677DC)', /hayso|chat|ask|support|clinic|message|reply/i],
+  ['home', 'Home, plan and score', 'linear-gradient(135deg,#B4CEFF,#5E8FE6)', /home|score|ring|plan|today|goal|progress|chart|graph/i],
+  ['setup', 'Sign-in and setup', 'linear-gradient(135deg,#E6E3DD,#9AA3A0)', /sign|login|log in|account|onboard|setup|set up|password|email|notification/i],
+];
+const topicOf = (x) => (TOPICS.find((t) => t[3].test(x.text || '')) || ['other', 'Everything else', 'linear-gradient(135deg,#E6E3DD,#C9C4BC)'])[0];
 const who = (x) => x.label || (x.email && !x.email.startsWith('Guest') ? x.email : 'Guest ' + short(x.user_id ?? x.id));
 async function setLabel(id, label) {
   const { error } = await SB.rpc('admin_set_label', { uid: id, label });
@@ -248,15 +288,25 @@ function render() {
       </div>`;
   }
   if (view === 'users') {
-    const q = userQ.toLowerCase();
-    const rows = data.users.filter((u) => !q || (u.email || '').toLowerCase().includes(q) || u.id.startsWith(q));
-    m.innerHTML = head('Users', `${fmt(data.users.length)} accounts`) + `
-      <input class="field" placeholder="Search by email or user ID" value="${esc(userQ)}" oninput="userQ=this.value;render();this.focus();this.setSelectionRange(this.value.length,this.value.length)" style="max-width:360px">
-      <div class="panel glass wide"><table><thead><tr><th>User</th><th>Joined</th><th>Last active</th><th>Logs this week</th><th>All logs</th><th>Set up</th><th>Plan</th><th>Clinic</th></tr></thead><tbody>
-      ${rows.map((u) => `<tr><td><b>${u.email ? esc(u.email) : 'Guest'}</b><div class="small">${short(u.id)}${u.anonymous ? ' · not signed up yet' : ''}</div></td>
+    const q = userQ.toLowerCase(), wk = Date.now() - 7 * 864e5;
+    const row = (u) => `<tr><td><b>${u.email ? esc(u.email) : 'Guest'}</b><div class="small">${short(u.id)}${u.anonymous ? ' · not signed up yet' : ''}</div></td>
         <td>${when(u.joined)}</td><td>${ago(u.last_active)}</td><td>${fmt(u.actions_7d)}</td><td>${fmt(u.actions_total)}</td>
-        <td>${u.onboarded ? 'Yes' : 'No'}</td><td><span class="chip">${PLAN[u.subscription] || u.subscription}</span></td><td>${u.clinic ? 'Yes' : '–'}</td></tr>`).join('') || '<tr><td colspan="8" class="empty">No users</td></tr>'}
-      </tbody></table></div>`;
+        <td>${u.onboarded ? 'Yes' : 'No'}</td><td><span class="chip">${PLAN[u.subscription] || u.subscription}</span></td><td>${u.clinic ? 'Yes' : '–'}</td></tr>`;
+    const table = (list, k) => `<div class="wide"><table><thead><tr><th>User</th><th>Joined</th><th>Last active</th><th>Logs this week</th><th>All logs</th><th>Set up</th><th>Plan</th><th>Clinic</th></tr></thead><tbody>
+      ${list.slice(0, k ? (showN[k] || 5) : 999).map(row).join('') || '<tr><td colspan="8" class="empty">No one here</td></tr>'}</tbody></table></div>${k ? moreBtn(k, list.length) : ''}`;
+    const search = `<input class="field" placeholder="Search by email or user ID" value="${esc(userQ)}" oninput="userQ=this.value;render();this.focus();this.setSelectionRange(this.value.length,this.value.length)" style="max-width:360px">`;
+    if (q) {
+      const hits = data.users.filter((u) => (u.email || '').toLowerCase().includes(q) || u.id.startsWith(q));
+      m.innerHTML = head('Users', `${fmt(hits.length)} found`) + search + `<div class="panel glass">${table(hits)}</div>`;
+    } else {
+      const active = data.users.filter((u) => u.last_active && new Date(u.last_active) > wk);
+      const quiet = data.users.filter((u) => !active.includes(u) && (u.actions_total > 0 || u.onboarded));
+      const never = data.users.filter((u) => !active.includes(u) && !quiet.includes(u));
+      m.innerHTML = head('Users', `${fmt(data.users.length)} accounts`) + search +
+        fold('u-active', 'var(--good)', 'Active this week', 'Logged something in the last 7 days', fmt(active.length), '', table(active, 'u-active')) +
+        fold('u-quiet', 'var(--warn)', 'Set up, gone quiet', 'Used it before, nothing this week', fmt(quiet.length), '', table(quiet, 'u-quiet')) +
+        fold('u-never', 'var(--faint)', 'Never used', 'Opened the app, never logged', fmt(never.length), '', table(never, 'u-never'));
+    }
   }
   if (view === 'subs') {
     const subs = o.subs || {}, list = data.users.filter((u) => u.subscription && u.subscription !== 'none');
@@ -278,29 +328,26 @@ function render() {
     }, {})).sort((a, b) => b.last.localeCompare(a.last));
     const count = (s) => all.filter((x) => x.status === s).length;
     const todo = list.filter((x) => !x.ai && !noise(x)).length;
+    const groups = [...TOPICS, ['other', 'Everything else', 'linear-gradient(135deg,#E6E3DD,#C9C4BC)']];
     m.innerHTML = head('Feedback', 'Who sent what, when and where. From the Test button and from hayso in the app') + `
-      <div class="panel glass" style="margin-bottom:14px"><h2>People giving feedback</h2>
-        <table><thead><tr><th>Person</th><th>Name them</th><th>Beta patient</th><th>Feedback</th><th>Last sent</th><th></th></tr></thead><tbody>
+      ${fold('fb-people', '', 'People giving feedback', 'Name testers and tick beta patients', fmt(people.length), '', `<div class="wide"><table><thead><tr><th>Person</th><th>Name them</th><th>Beta patient</th><th>Feedback</th><th>Last sent</th><th></th></tr></thead><tbody>
         ${people.map((p) => `<tr><td>${esc(who(p))}<div class="small">${p.email && !p.email.startsWith('Guest') ? '' : 'Guest · ' + short(p.id)}</div></td>
           <td><input value="${esc(p.label || '')}" placeholder="eg Sam, or Priya (on treatment)" style="width:100%;min-width:160px;padding:6px 10px;border-radius:10px;border:1px solid var(--line);font:inherit;font-size:13px" onchange="setLabel('${p.id}', this.value)"></td>
           <td><input type="checkbox" ${p.beta ? 'checked' : ''} onchange="setBeta('${p.id}', this.checked)"></td>
           <td>${fmt(p.n)}</td><td>${ago(p.last)}</td>
           <td><button class="btn ghost" style="padding:5px 12px;font-size:12px" onclick="fbWho=fbWho==='${p.id}'?null:'${p.id}';render()">${fbWho === p.id ? 'Show everyone' : 'Only theirs'}</button></td></tr>`).join('') || '<tr><td colspan="6" class="empty">No feedback yet</td></tr>'}
         </tbody></table>
-        <div class="small" style="margin-top:8px">Most testers sign in as guests, so there's no email. Give them a name here. Tick "Beta patient" for people actually on treatment.</div></div>
-      <div class="tabs">${[['new', 'New'], ['in_progress', 'In progress'], ['fixed', 'Fixed'], ['all', 'All']].map(([k, l]) =>
+        <div class="small" style="margin-top:8px">Most testers sign in as guests, so there's no email. Give them a name here. Tick "Beta patient" for people actually on treatment.</div></div>`)}
+      <div class="tabs" style="margin-top:18px">${[['new', 'New'], ['in_progress', 'In progress'], ['fixed', 'Fixed'], ['all', 'All']].map(([k, l]) =>
         `<button class="${fbFilter === k ? 'on' : ''}" onclick="fbFilter='${k}';render()">${l} ${k === 'all' ? all.length : count(k)}</button>`).join('')}
         ${todo ? `<button class="on" style="background:linear-gradient(135deg,var(--blue),var(--lilac) 55%,var(--pink));border:0" onclick="analyseAll()">✦ Analyse ${todo} with AI</button>` : ''}
         <label class="small row" style="margin-left:auto"><input type="checkbox" ${betaOnly ? 'checked' : ''} onchange="betaOnly=this.checked;render()"> Beta patients only</label>
         <label class="small row"><input type="checkbox" ${hideNoise ? 'checked' : ''} onchange="hideNoise=this.checked;render()"> Hide test taps</label></div>
-      <div class="panel glass">${list.map((x) => `<div class="fb"><div><span class="chip ${x.type}">${x.type === 'bug' ? 'Bug' : 'Idea'}</span>
-          ${x.source === 'hayso' ? '<span class="chip">via hayso</span>' : ''}
-          <b style="font-size:14px">${esc(who(x))}</b>${x.beta ? ' <span class="chip fixed">Beta patient</span>' : ''} <span class="small">${when(x.created_at)}${x.screen ? ' · ' + esc(x.screen) : ''}</span><p>${esc(x.text)}</p>
-          ${aiBlock(x.ai, 'fb-' + x.id)}
-          ${!x.ai && !noise(x) ? `<button class="btn ghost" style="padding:6px 14px;margin-top:8px;font-size:13px" onclick="analyse('${x.id}')">${busyAi[x.id] ? 'Analysing…' : '✦ Analyse with AI'}</button>` : ''}
-          ${ctxBlock(x.context)}</div>
-          <select onchange="setStatus('${x.id}',this.value)">${[['new', 'New'], ['in_progress', 'In progress'], ['fixed', 'Fixed']].map(([k, l]) => `<option value="${k}" ${x.status === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>`).join('')
-        || '<div class="empty">Nothing here</div>'}</div>`;
+      ${groups.map(([k, title, dot]) => { const items = list.filter((x) => topicOf(x) === k); if (!items.length) return '';
+        const nNew = items.filter((x) => x.status === 'new').length;
+        return fold('fb-' + k, dot, title, `Last sent ${ago(items[0].created_at)}`, fmt(items.length), fbFilter !== 'new' && nNew ? `<span class="newn">${nNew} new</span>` : '',
+          items.slice(0, showN['fb-' + k] || 5).map(fbItem).join('') + moreBtn('fb-' + k, items.length)); }).join('')
+        || '<div class="panel glass empty">Nothing here</div>'}`;
   }
   if (view === 'errors') {
     m.innerHTML = head('App errors', 'Real code errors from phones, last 30 days, grouped') + `
@@ -331,6 +378,19 @@ function render() {
       <div class="panel glass">${data.chats.map((c) => `<div class="chat"><div class="small">${when(c.created_at)} · user ${short(c.user_id)}${c.route && c.route !== 'allowed' ? ` · <span class="chip">${esc(c.route)}</span>` : ''}</div>
         <div class="q">${esc(c.message)}</div>${c.reply ? `<div class="a">hayso: ${esc(c.reply)}</div>` : ''}</div>`).join('') || '<div class="empty">No chats yet</div>'}</div>`;
   }
+}
+// one feedback item: a single line, tap to open the detail and AI help
+function fbItem(x) {
+  const on = openSet.has('i-' + x.id);
+  return `<div class="fbi${on ? ' open' : ''}"><div class="fbi-h" onclick="tog('i-${x.id}')">
+      <span class="chip ${x.type}">${x.type === 'bug' ? 'Bug' : 'Idea'}</span><span class="txt">${esc(x.text)}</span>
+      <span class="small" style="white-space:nowrap">${esc(who(x))} · ${when(x.created_at)}</span>${x.ai ? '<span class="chip" title="Analysed">✦</span>' : ''}${chev}</div>
+    ${on ? `<div class="fbi-b">
+      <div class="row" style="flex-wrap:wrap">${x.source === 'hayso' ? '<span class="chip">via hayso</span>' : ''}${x.beta ? '<span class="chip fixed">Beta patient</span>' : ''}${x.screen ? `<span class="small">Screen: ${esc(x.screen)}</span>` : ''}
+        <label class="small row" style="margin-left:auto">Status <select style="border:1px solid var(--line);border-radius:10px;padding:6px 8px;background:#fff" onchange="setStatus('${x.id}',this.value)">${[['new', 'New'], ['in_progress', 'In progress'], ['fixed', 'Fixed']].map(([k, l]) => `<option value="${k}" ${x.status === k ? 'selected' : ''}>${l}</option>`).join('')}</select></label></div>
+      ${aiBlock(x.ai, 'fb-' + x.id)}
+      ${!x.ai && !noise(x) ? `<button class="btn ghost" style="padding:6px 14px;margin-top:8px;font-size:13px" onclick="analyse('${x.id}')">${busyAi[x.id] ? 'Analysing…' : '✦ Analyse with AI'}</button>` : ''}
+      ${ctxBlock(x.context)}</div>` : ''}</div>`;
 }
 // AI fix suggestion: plain cause, files, and a paste-ready Claude Code prompt
 function aiBlock(ai, key) {
