@@ -131,6 +131,7 @@ tr:last-child td{border-bottom:0}
 .fn-v{font-weight:700;text-align:right}.fn-v span{display:block;font-weight:400;font-size:12px;color:var(--muted)}.fn-v span.bad{color:#B4476F;font-weight:600}
 .stack{width:100%;max-width:26px;display:flex;flex-direction:column;border-radius:8px 8px 4px 4px;overflow:hidden;min-height:3px;background:rgba(24,33,31,.06)}.stack i{display:block;min-height:0}
 .money{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.money b{font-size:26px;letter-spacing:-.02em}
+.pwwrap{position:relative}.pwshow{position:absolute;right:8px;top:50%;transform:translateY(-50%);border:0;background:none;color:var(--petrol);font-weight:600;font-size:14px;padding:8px 10px;cursor:pointer;border-radius:10px}
 </style>
 </head>
 <body>
@@ -143,13 +144,13 @@ tr:last-child td{border-bottom:0}
     <p class="small" id="loginSub" style="margin:0 0 18px">App management for the Hayso team.</p>
     <form id="signin">
       <input class="field" id="email" type="email" placeholder="Email" autocomplete="username" required>
-      <input class="field" id="pw" type="password" placeholder="Password" autocomplete="current-password" required style="margin-top:10px">
+      <div class="pwwrap" style="margin-top:10px"><input class="field" id="pw" type="password" placeholder="Password" autocomplete="current-password" required style="padding-right:74px"><button type="button" class="pwshow" data-for="pw" aria-pressed="false">Show</button></div>
       <div id="loginErr" class="err" style="display:none;margin-top:12px"></div>
       <button class="btn" style="width:100%;margin-top:16px" type="submit">Sign in</button>
       <p style="text-align:center;margin:14px 0 0"><a href="#" id="forgot" class="small">Forgot password?</a></p>
     </form>
     <form id="setpw" style="display:none">
-      <input class="field" id="pw1" type="password" placeholder="New password (8+ characters)" autocomplete="new-password" minlength="8" required>
+      <div class="pwwrap"><input class="field" id="pw1" type="password" placeholder="New password (8+ characters)" autocomplete="new-password" minlength="8" required style="padding-right:74px"><button type="button" class="pwshow" data-for="pw1" aria-pressed="false">Show</button></div>
       <div id="setErr" class="err" style="display:none;margin-top:12px"></div>
       <button class="btn" style="width:100%;margin-top:16px" type="submit">Save password</button>
     </form>
@@ -194,6 +195,7 @@ $('#signin').onsubmit = async (e) => {
   if (error) return showErr($('#loginErr'), 'That email and password don’t match.');
   start();
 };
+document.querySelectorAll('.pwshow').forEach((b) => b.onclick = () => { const f = $('#' + b.dataset.for), on = f.type === 'password'; f.type = on ? 'text' : 'password'; b.textContent = on ? 'Hide' : 'Show'; b.setAttribute('aria-pressed', String(on)); f.focus(); });
 $('#forgot').onclick = async (e) => {
   e.preventDefault();
   const email = $('#email').value.trim();
