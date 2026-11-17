@@ -93,6 +93,17 @@ tr:last-child td{border-bottom:0}
 .fbi-h .chev{width:24px;height:24px}
 .fold-b{padding:0 22px 14px}
 .tdot{width:12px;height:12px;border-radius:50%;flex:none}
+.hb{padding:22px 24px;display:flex;align-items:center;gap:16px}
+.hb .big{font-size:26px;font-weight:800;letter-spacing:-.02em}
+.hdot{width:18px;height:18px;border-radius:50%;flex:none}
+.hgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:12px}
+.htile{padding:16px 18px}
+.htile .nm{font-weight:700;display:flex;align-items:center;gap:8px}
+.htile .why{font-size:13px;margin-top:6px}
+.tl{display:flex;gap:2px;height:34px;align-items:stretch;margin-top:6px}
+.tl i{flex:1;border-radius:3px;background:rgba(46,156,126,.55)}
+.tl i.bad{background:var(--pink)}.tl i.none{background:rgba(24,33,31,.08)}
+@media (max-width:900px){.hgrid{grid-template-columns:1fr 1fr}}
 .newn{font-size:12px;font-weight:700;color:#fff;background:var(--lilac);border-radius:99px;padding:1px 8px}
 .more{display:block;margin:10px auto 2px;padding:7px 18px;font-size:13px}
 .fbi{padding:12px 0;border-bottom:1px solid var(--line)}
@@ -139,6 +150,7 @@ tr:last-child td{border-bottom:0}
   <aside class="side glass">
     <div class="mark"><span class="wmk" role="img" aria-label="hayso" style="font-size:28px"><span aria-hidden="true">hays</span><svg viewBox="0 0 100 100" aria-hidden="true" style="width:.531em;height:.531em;margin-left:.075em;position:relative;top:.015em;overflow:visible"><defs><linearGradient id="awm2" x1="0" y1="0" x2="1" y2="1"><stop offset=".12" stop-color="#5FB4F0"/><stop offset=".5" stop-color="#9C8CF2"/><stop offset=".88" stop-color="#F29BC0"/></linearGradient></defs><path d="M 47.19 12.61 A 37.5 37.5 0 1 1 12.61 47.16" fill="none" stroke="url(#awm2)" stroke-width="25" stroke-linecap="round"/></svg></span></div>
     <button class="nav on" data-v="overview">Overview</button>
+    <button class="nav" data-v="health">App health <span class="n" id="hN" style="display:none;background:var(--warn)">!</span></button>
     <button class="nav" data-v="users">Users</button>
     <button class="nav" data-v="subs">Subscribers</button>
     <button class="nav" data-v="feedback">Feedback <span class="n" id="fbN" style="display:none"></span></button>
@@ -210,6 +222,7 @@ async function load() {
   const n = data.fb.filter((x) => x.status === 'new' && !noise(x)).length;
   $('#fbN').textContent = n; $('#fbN').style.display = n ? 'inline-block' : 'none';
   render();
+  hLoad();
 }
 let betaOnly = false, fbWho = null;
 const openSet = new Set(), showN = {};
@@ -248,6 +261,7 @@ const noise = (x) => (x.text || '').trim().length < 12; // test taps like "kxrfk
 document.querySelectorAll('.nav').forEach((b) => b.onclick = () => {
   view = b.dataset.v; document.querySelectorAll('.nav').forEach((x) => x.classList.toggle('on', x === b));
   if (view === 'library') return libLoad();
+  if (view === 'health') return hLoad();
   render();
 });
 
@@ -373,6 +387,7 @@ function render() {
         ${(u.actions || []).map((r) => `<tr><td>${esc(r.name)}</td><td>${fmt(r.times)}</td><td>${fmt(r.users)}</td></tr>`).join('') || '<tr><td colspan="3" class="empty">No data yet</td></tr>'}</tbody></table></div></div>`;
   }
   if (view === 'library') return libRender(m);
+  if (view === 'health') return hRender(m);
   if (view === 'chats') {
     // grouped like feedback: questions hayso turned away first, then by topic. One line each, tap to read the reply.
     const names = {}; data.fb.forEach((x) => { if (x.label) names[x.user_id] = x.label; });
@@ -391,6 +406,81 @@ function render() {
       || '<div class="panel glass empty">No chats yet</div>');
   }
 }
+// ---------- App health (17 Nov) ----------
+// Server checks run every 5 minutes. Phones say start / ready / crash. Answers "is the app down, and why?"
+const HNAMES = { database: 'Database', logins: 'Sign-in', hayso_chat: 'hayso chat', meal_scan: 'Meal photo scan', ai: 'AI (Claude)', sentry: 'Sentry crashes' };
+let health = null, hBusy = false, hTimer = null;
+async function hLoad() {
+  const { data: h, error } = await SB.rpc('admin_health');
+  health = error ? { error: error.message } : h;
+  const p = hProblems(); $('#hN').style.display = p.length ? 'inline-block' : 'none';
+  if (view === 'health') render();
+  clearTimeout(hTimer); if (view === 'health') hTimer = setTimeout(hLoad, 60000); // live while the page is open
+}
+async function hCheck(btn) {
+  hBusy = true; render();
+  const { data: r, error } = await SB.functions.invoke('app-health', { body: {} });
+  hBusy = false;
+  if (error || r?.error) { health = { ...(health || {}), checkErr: 'Could not run the checks. The app-health function may be down or not set up yet.' }; return render(); }
+  hLoad();
+}
+function hProblems() {
+  const h = health; if (!h || h.error) return [];
+  const out = [];
+  (h.checks || []).filter((c) => !c.ok).forEach((c) => out.push(`${HNAMES[c.name] || c.name}: ${c.detail || 'failing'}`));
+  if (h.last_run_at && Date.now() - new Date(h.last_run_at) > 12 * 60000) out.push(`Server checks stopped. Last ran ${ago(h.last_run_at)}`);
+  (h.phones || []).forEach((p) => {
+    const nm = p.platform === 'ios' ? 'iPhone' : p.platform === 'android' ? 'Android' : p.platform;
+    if (p.starts_1h >= 2 && p.ready_1h === 0) out.push(`${nm} app is not opening: ${p.starts_1h} opens in the last hour, none reached the first screen`);
+    else if (p.crash_1h) out.push(`${nm} app crashed ${p.crash_1h} ${p.crash_1h === 1 ? 'time' : 'times'} in the last hour`);
+  });
+  return out;
+}
+function hRender(m) {
+  const h = health;
+  if (!h) { m.innerHTML = head('App health', 'Loading…'); return; }
+  if (h.error) { m.innerHTML = head('App health', '') + `<div class="panel glass empty">App health isn’t switched on yet. Ask Claude to apply the app health update.</div>`; return; }
+  const probs = hProblems(), good = !probs.length, never = !h.last_run_at;
+  const tile = (name, ok, line, why) => `<div class="glass htile"><div class="nm"><span class="hdot" style="width:12px;height:12px;background:${ok === null ? 'var(--faint)' : ok ? 'var(--good)' : 'var(--pink)'}"></span>${name}</div>
+    <div class="small" style="margin-top:4px">${line}</div>${why ? `<div class="why">${why}</div>` : ''}</div>`;
+  const phone = (key, nm) => { const p = (h.phones || []).find((x) => x.platform === key);
+    if (!p) return tile(nm + ' app', null, 'No opens in 24h', '<span class="small">Pings start with the new build.</span>');
+    const bad = (p.starts_1h >= 2 && p.ready_1h === 0) || p.crash_1h > 0;
+    return tile(nm + ' app', !bad, `Last opened fine ${ago(p.last_ready)} · v${esc(p.version || '?')}`,
+      `<span class="small">${fmt(p.starts_24h)} opens in 24h · ${fmt(p.stuck_24h)} didn’t open · ${fmt(p.crash_24h)} crashes</span>`); };
+  const sentry = (h.checks || []).find((c) => c.name === 'sentry');
+  const slots = []; const tl = h.timeline || [];
+  for (let k = 95; k >= 0; k--) { const t = Math.floor((Date.now() - k * 900000) / 900000) * 900000;
+    const b = tl.find((x) => Math.floor(new Date(x.t).getTime() / 900000) * 900000 === t);
+    slots.push(`<i class="${!b ? 'none' : b.ok ? '' : 'bad'}" title="${new Date(t).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}${b ? (b.ok ? ': all fine' : ': ' + esc(HNAMES[b.failed] || b.failed)) : ': no check'}"></i>`); }
+  const errs = [...(h.crashes || []).map((c) => ({ ...c, name: c.detail || 'App crashed', kind: 'Crash' })), ...(h.errors || []).map((e) => ({ ...e, kind: 'Error' }))];
+  m.innerHTML = head('App health', `Live. Checks every 5 min${h.last_run_at ? ' · last ' + ago(h.last_run_at) : ''}`) +
+    `<div class="glass hb"><span class="hdot" style="background:${never ? 'var(--faint)' : good ? 'var(--good)' : 'var(--pink)'}"></span>
+      <div style="flex:1"><div class="big">${never ? 'No checks yet' : good ? 'Everything is working' : probs.length === 1 ? 'Something is wrong' : probs.length + ' things are wrong'}</div>
+      ${probs.map((x) => `<div style="margin-top:4px">${esc(x)}</div>`).join('') || `<div class="small" style="margin-top:4px">${never ? 'Press Check now, or wait for the first 5-minute check.' : 'Servers, sign-in, hayso chat, AI and phones all look fine.'}</div>`}
+      ${h.checkErr ? `<div class="err" style="margin-top:8px">${esc(h.checkErr)}</div>` : ''}</div>
+      <button class="btn" onclick="hCheck(this)" ${hBusy ? 'disabled' : ''}>${hBusy ? 'Checking…' : 'Check now'}</button></div>
+    <div class="hgrid">
+      ${['database', 'logins', 'hayso_chat', 'meal_scan', 'ai'].map((k) => { const c = (h.checks || []).find((x) => x.name === k);
+        return c ? tile(HNAMES[k], c.ok, c.ok ? `Fine · ${fmt(c.ms)} ms` : `Down since at least ${ago(c.at)}`, c.ok ? '' : `<b>Cause:</b> ${esc(c.detail)}`) : tile(HNAMES[k], null, 'Not checked yet', ''); }).join('')}
+      ${sentry ? tile('Sentry crashes', sentry.ok, esc(sentry.detail || ''), '') : tile('Sentry crashes', null, 'Not connected yet', '<span class="small">Add the Sentry keys and hard crashes show here too.</span>')}
+      ${phone('ios', 'iPhone')}${phone('android', 'Android')}
+    </div>
+    <div class="panel glass"><div class="row"><h2 style="margin:0">Last 24 hours</h2><span class="small" style="margin-left:auto">Each block is 15 minutes. Pink = something failed. Hover to see what.</span></div>
+      <div class="tl">${slots.join('')}</div>
+      <div class="row small" style="justify-content:space-between;margin-top:4px"><span>24 h ago</span><span>Now</span></div></div>` +
+    fold('h-errs', 'var(--pink)', 'Crashes and errors', 'From phones, last 24 hours. Newest first', fmt(errs.length), '',
+      errs.length ? errs.slice(0, showN['h-errs'] || 5).map((e) => `<div class="fbi"><div class="row" style="flex-wrap:wrap"><span class="chip bug">${e.kind}</span>
+        <span style="flex:1;min-width:200px;font-family:ui-monospace,Menlo,monospace;font-size:13px">${esc(e.name)}</span>
+        <span class="small">${e.platform === 'ios' ? 'iPhone' : e.platform === 'android' ? 'Android' : esc(e.platform)} · v${esc(e.app_version || '?')} · ${fmt(e.n)}× · ${ago(e.last)}</span></div></div>`).join('') + moreBtn('h-errs', errs.length)
+        + `<button class="btn ghost" style="margin-top:10px;padding:7px 16px;font-size:13px" onclick="go('errors')">Open App errors for stack traces and AI fixes</button>`
+      : '<div class="empty">No crashes or errors in 24 hours.</div>') +
+    fold('h-past', 'var(--faint)', 'Past problems', 'Failed checks, last 7 days', fmt((h.incidents || []).length), '',
+      (h.incidents || []).length ? (h.incidents || []).slice(0, showN['h-past'] || 5).map((x) => `<div class="fbi"><div class="row"><b>${esc(HNAMES[x.check_name] || x.check_name)}</b>
+        <span class="small" style="flex:1">${esc(x.detail || '')}</span><span class="small">${when(x.at)}</span></div></div>`).join('') + moreBtn('h-past', h.incidents.length)
+      : '<div class="empty">No failed checks in 7 days.</div>');
+}
+
 // one feedback item: a single line, tap to open the detail and AI help
 function fbItem(x) {
   const on = openSet.has('i-' + x.id);
