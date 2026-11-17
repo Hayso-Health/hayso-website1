@@ -453,48 +453,65 @@ async function analyseError(i) {
 
 // ---------- Library: web pages -> notes in our own words -> a person approves (17 Nov 2026) ----------
 const TYPES = { info: 'Facts and info', recipe: 'Recipes', workout: 'Workouts', meal_plan: 'Meal plans' };
-const lib = { tab: 'check', sources: [], jobs: [], items: [], approved: [], o: {}, topic: '', type: 'info', links: '', site: '', words: '', q: '', qType: '', running: {}, msg: '', openJob: null, pages: {} };
+// Library sections (17 Nov): 3 set topics plus a general request. Each has its own scrape form, To check and Library.
+const SECTIONS = [
+  { k: 'workouts', title: 'Workouts', sub: 'Beginner strength and movement', dot: 'linear-gradient(135deg,#A8E6DA,#2FAE9A)', types: ['workout'], site: 'nhs.uk',
+    ideas: [['Strength at home for beginners', 'strength'], ['Keep your muscle', 'muscle'], ['Low-energy day moves', 'exercise'], ['Walking plans', 'walking']] },
+  { k: 'recipes', title: 'Recipes and meal plans', sub: 'High protein, small portions', dot: 'linear-gradient(135deg,#F7B6DA,#DE6CAE)', types: ['recipe', 'meal_plan'], site: 'nhs.uk',
+    ideas: [['High-protein small portions', 'protein'], ['Easy on the stomach', 'recipe'], ['Quick lunches', 'lunch'], ['Batch cooking', 'healthy-recipes']] },
+  { k: 'info', title: 'GLP-1 info, blogs and support', sub: 'Facts for Ask hayso and blog posts', dot: 'linear-gradient(135deg,#D6C6FA,#9677DC)', types: ['info'], site: 'nhs.uk',
+    ideas: [['Eating well on treatment', 'eat-well'], ['Drinking enough water', 'water'], ['Keeping weight off after', 'weight'], ['Sleep and mood', 'sleep']] },
+  { k: 'general', title: 'General request', sub: 'Anything else. You pick what it makes', dot: 'linear-gradient(135deg,#FBDDA2,#DE9C34)', types: ['info', 'recipe', 'workout', 'meal_plan'], site: '', ideas: [] },
+];
+const GEN = 'General · ';
+const lib = { f: {}, tab: 'check', sources: [], jobs: [], items: [], approved: [], o: {}, topic: '', type: 'info', links: '', site: '', words: '', q: '', qType: '', running: {}, msg: '', openJob: null, pages: {} };
 async function libLoad() {
   const [o, s, j, d, a] = await Promise.all([SB.rpc('admin_lib_overview'), SB.rpc('admin_lib_sources'), SB.rpc('admin_lib_jobs'),
-    SB.rpc('admin_lib_items', { p_status: 'draft' }), SB.rpc('admin_lib_items', { p_status: 'approved', p_type: lib.qType || null, p_q: lib.q || null })]);
+    SB.rpc('admin_lib_items', { p_status: 'draft' }), SB.rpc('admin_lib_items', { p_status: 'approved', p_type: null, p_q: null })]);
   if (o.error) { lib.msg = 'The library isn’t switched on yet. Ask Claude to apply the library update.'; }
   Object.assign(lib, { o: o.data || {}, sources: s.data || [], jobs: j.data || [], items: d.data || [], approved: a.data || [] });
   const n = lib.o.to_check || 0; $('#libN').textContent = n; $('#libN').style.display = n ? 'inline-block' : 'none';
   if (view === 'library') render();
 }
 function libSay(msg) { lib.msg = msg; render(); }
+function libForm(k) { const S = SECTIONS.find((x) => x.k === k); return lib.f[k] = lib.f[k] || { topic: '', type: S.types[0], links: '', site: S.site, words: '', sub: 'check', q: '' }; }
+function libSec(i) {
+  const j = lib.jobs.find((x) => x.id === i.job_id);
+  if (j && j.topic.startsWith(GEN)) return 'general';
+  return (SECTIONS.find((S) => S.k !== 'general' && S.types.includes(i.type)) || SECTIONS[3]).k;
+}
 function libRender(m) {
-  const o = lib.o, allowed = lib.sources.filter((x) => x.allowed);
-  const tabs = [['check', `To check (${fmt(o.to_check)})`], ['library', `Library (${fmt(o.approved)})`], ['new', 'New scrape'], ['jobs', 'Scrapes'], ['sites', 'Sites']];
-  let body = '';
-  if (lib.tab === 'check') {
-    body = lib.items.length ? lib.items.map((i) => libCard(i, true)).join('') : '<div class="panel glass empty">Nothing to check. Start a new scrape.</div>';
-  }
-  if (lib.tab === 'library') {
-    body = `<div class="panel glass"><div class="row" style="gap:10px;flex-wrap:wrap">
-        <input id="libQ" placeholder="Search the library" value="${esc(lib.q)}" oninput="lib.q=this.value" onkeydown="if(event.key==='Enter')libLoad()" style="flex:1;min-width:200px;padding:10px 14px;border-radius:12px;border:1px solid var(--line);font:inherit">
-        <select id="libQType" onchange="lib.qType=this.value;libLoad()" style="padding:10px;border-radius:12px;border:1px solid var(--line);font:inherit"><option value="">All types</option>${Object.entries(TYPES).map(([k, l]) => `<option value="${k}" ${lib.qType === k ? 'selected' : ''}>${l}</option>`).join('')}</select>
-        <button class="btn ghost" onclick="libLoad()" style="padding:9px 16px">Search</button></div></div>` +
-      (lib.approved.length ? lib.approved.map((i) => libCard(i, false)).join('') : '<div class="panel glass empty">No approved notes yet.</div>');
-  }
-  if (lib.tab === 'new') {
-    body = `<div class="panel glass" style="display:flex;flex-direction:column;gap:14px;max-width:760px">
-      <div><div class="small" style="margin-bottom:6px">1. What’s it about?</div>
-        <input id="libTopic" placeholder="eg protein when you have a small appetite" value="${esc(lib.topic)}" oninput="lib.topic=this.value" style="width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--line);font:inherit"></div>
-      <div><div class="small" style="margin-bottom:6px">2. What should it make?</div>
-        <div class="tabs" style="margin:0">${Object.entries(TYPES).map(([k, l]) => `<button class="${lib.type === k ? 'on' : ''}" onclick="lib.type='${k}';render()">${l}</button>`).join('')}</div></div>
-      <div><div class="small" style="margin-bottom:6px">3. Which pages? Paste links, one per line. Or find them on a site below.</div>
-        <textarea id="libLinks" rows="7" placeholder="https://www.nhs.uk/live-well/eat-well/..." oninput="lib.links=this.value" style="width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--line);font:13px ui-monospace,Menlo,monospace">${esc(lib.links)}</textarea>
-        <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:8px">
-          <select id="libSite" onchange="lib.site=this.value" style="padding:9px;border-radius:12px;border:1px solid var(--line);font:inherit"><option value="">Pick a site</option>${allowed.map((x) => `<option value="${esc(x.domain)}" ${lib.site === x.domain ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select>
-          <input id="libWords" placeholder="words in the page address, eg protein" value="${esc(lib.words)}" oninput="lib.words=this.value" style="flex:1;min-width:180px;padding:9px 12px;border-radius:12px;border:1px solid var(--line);font:inherit">
-          <button class="btn ghost" onclick="libFind(this)" style="padding:9px 16px">Find pages</button></div></div>
-      <div class="row" style="gap:12px;align-items:center"><button class="btn" onclick="libStart(this)">Start scrape</button>
-        <span class="small">${lib.links.split(/\n/).filter((x) => x.trim()).length} links · about $${(lib.links.split(/\n/).filter((x) => x.trim()).length * 0.004).toFixed(2)}</span></div>
-      <div class="small">Only pages on your allowed sites are read. Each page becomes up to 8 draft notes in our own words. Nothing is used until you approve it.</div></div>`;
-  }
-  if (lib.tab === 'jobs') {
-    body = `<div class="panel glass">${lib.jobs.map((j) => {
+  const o = lib.o, allowed = lib.sources.filter((x) => x.allowed), inp = 'padding:10px 12px;border-radius:12px;border:1px solid var(--line);font:inherit;background:#fff';
+  const section = (S) => {
+    const f = libForm(S.k), drafts = lib.items.filter((i) => libSec(i) === S.k), lib2 = lib.approved.filter((i) => libSec(i) === S.k);
+    const q = f.q.toLowerCase(), shown = lib2.filter((i) => !q || (i.title + ' ' + i.body + ' ' + (i.tags || []).join(' ')).toLowerCase().includes(q));
+    const nLinks = f.links.split(/\n/).filter((x) => x.trim()).length;
+    const sub = [['check', `To check ${drafts.length}`], ['lib', `Library ${lib2.length}`], ['new', '+ New scrape']];
+    let inner = `<div class="tabs" style="margin:2px 0 14px">${sub.map(([t, l]) => `<button class="${f.sub === t ? 'on' : ''}" onclick="libForm('${S.k}').sub='${t}';render()">${l}</button>`).join('')}</div>`;
+    if (f.sub === 'check') inner += drafts.length ? drafts.slice(0, showN['ld-' + S.k] || 5).map((i) => libCard(i, true)).join('') + moreBtn('ld-' + S.k, drafts.length)
+      : `<div class="empty">Nothing to check here. <a href="#" onclick="libForm('${S.k}').sub='new';render();return false">Start a scrape</a></div>`;
+    if (f.sub === 'lib') inner += `<input placeholder="Search ${esc(S.title.toLowerCase())}" value="${esc(f.q)}" oninput="libForm('${S.k}').q=this.value;render();this.focus();this.setSelectionRange(this.value.length,this.value.length)" style="${inp};width:100%;max-width:360px;margin-bottom:6px">` +
+      (shown.length ? shown.slice(0, showN['la-' + S.k] || 5).map((i) => libCard(i, false)).join('') + moreBtn('la-' + S.k, shown.length) : '<div class="empty">No approved notes here yet.</div>');
+    if (f.sub === 'new') inner += `<div style="display:flex;flex-direction:column;gap:14px;max-width:760px">
+      ${S.ideas.length ? `<div><div class="small" style="margin-bottom:6px">Quick start: tap one</div><div class="tabs" style="margin:0">${S.ideas.map(([t, w]) =>
+        `<button class="${f.topic === t ? 'on' : ''}" onclick="Object.assign(libForm('${S.k}'),{topic:'${t}',words:'${w}'});render()">${t}</button>`).join('')}</div></div>` : ''}
+      <div><div class="small" style="margin-bottom:6px">${S.ideas.length ? 'Or type your own topic' : '1. What do you want?'}</div>
+        <input placeholder="${S.k === 'general' ? 'eg what to eat before a gym session' : 'eg protein when you have a small appetite'}" value="${esc(f.topic)}" oninput="libForm('${S.k}').topic=this.value" style="${inp};width:100%"></div>
+      ${S.types.length > 1 ? `<div><div class="small" style="margin-bottom:6px">What should it make?</div><div class="tabs" style="margin:0">${S.types.map((t) =>
+        `<button class="${f.type === t ? 'on' : ''}" onclick="libForm('${S.k}').type='${t}';render()">${TYPES[t]}</button>`).join('')}</div></div>` : ''}
+      <div><div class="small" style="margin-bottom:6px">Find pages on a trusted site</div>
+        <div class="row" style="gap:8px;flex-wrap:wrap">
+          <select onchange="libForm('${S.k}').site=this.value" style="${inp}"><option value="">Pick a site</option>${allowed.map((x) => `<option value="${esc(x.domain)}" ${f.site === x.domain ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select>
+          <input placeholder="word in the page address, eg protein" value="${esc(f.words)}" oninput="libForm('${S.k}').words=this.value" style="${inp};flex:1;min-width:180px">
+          <button class="btn ghost" onclick="libFind(this,'${S.k}')" style="padding:9px 16px">Find pages</button></div></div>
+      <div><div class="small" style="margin-bottom:6px">Pages to read (one link per line). Remove any you don’t want.</div>
+        <textarea rows="6" placeholder="https://www.nhs.uk/..." oninput="libForm('${S.k}').links=this.value" style="${inp};width:100%;font:13px ui-monospace,Menlo,monospace">${esc(f.links)}</textarea></div>
+      <div class="row" style="gap:12px;align-items:center"><button class="btn" onclick="libStart(this,'${S.k}')">Start scrape</button>
+        <span class="small">${nLinks} links · about $${(nLinks * 0.004).toFixed(2)}</span></div></div>`;
+    const extra = drafts.length ? `<span class="newn">${drafts.length} to check</span>` : '';
+    return fold('lib-' + S.k, S.dot, S.title, S.sub, fmt(lib2.length), extra, inner);
+  };
+  const jobs = `<div>${lib.jobs.slice(0, showN['lj'] || 5).map((j) => {
       const pct = j.pages_total ? Math.round((j.pages_done / j.pages_total) * 100) : 0, run = lib.running[j.id];
       return `<div class="fb" style="display:block"><div class="row" style="flex-wrap:wrap;gap:8px"><b>${esc(j.topic)}</b><span class="chip">${TYPES[j.type]}</span>
           <span class="chip ${j.status === 'done' ? 'fixed' : j.status === 'running' || run ? 'in_progress' : j.status === 'failed' ? 'bug' : 'new'}">${run ? 'Reading pages…' : esc(j.status)}</span>
@@ -507,25 +524,25 @@ function libRender(m) {
             ${run || j.status === 'running' || j.status === 'queued' ? `<button class="btn ghost" style="padding:6px 14px;font-size:13px" onclick="libStop('${j.id}')">Stop</button>` : ''}
             <button class="btn ghost" style="padding:6px 14px;font-size:13px" onclick="libPages('${j.id}')">${lib.openJob === j.id ? 'Hide pages' : 'Pages'}</button></span></div>
         ${lib.openJob === j.id ? `<div style="margin-top:8px">${(lib.pages[j.id] || []).map((p) => `<div class="small" style="padding:4px 0;border-top:1px solid var(--line)"><span class="chip ${p.status === 'done' ? 'fixed' : p.status === 'failed' ? 'bug' : ''}">${p.status}</span> <a href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.title || p.url)}</a>${p.reason ? ` · ${esc(p.reason)}` : ''}</div>`).join('')}</div>` : ''}
-      </div>`; }).join('') || '<div class="empty">No scrapes yet.</div>'}</div>`;
-  }
-  if (lib.tab === 'sites') {
-    body = `<div class="panel glass"><h2>Sites the scraper may read</h2>
-      <table><thead><tr><th>Site</th><th>Address</th><th>Kind</th><th>Allowed</th></tr></thead><tbody>
+      </div>`; }).join('') || '<div class="empty">No scrapes yet.</div>'}${moreBtn('lj', lib.jobs.length)}</div>`;
+  const sites = `<div class="wide"><table><thead><tr><th>Site</th><th>Address</th><th>Kind</th><th>Allowed</th></tr></thead><tbody>
       ${lib.sources.map((x) => `<tr><td>${esc(x.name)}</td><td>${esc(x.domain)}</td><td>${esc(x.kind)}</td>
-        <td><input type="checkbox" ${x.allowed ? 'checked' : ''} onchange="libSite('${esc(x.domain)}','${esc(x.name)}','${x.kind}',this.checked)"></td></tr>`).join('')}</tbody></table>
+        <td><input type="checkbox" ${x.allowed ? 'checked' : ''} onchange="libSite('${esc(x.domain)}','${esc(x.name)}','${x.kind}',this.checked)"></td></tr>`).join('')}</tbody></table></div>
       <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:14px">
-        <input id="newDom" placeholder="Website address, eg bda.uk.com" style="flex:1;min-width:180px;padding:9px 12px;border-radius:12px;border:1px solid var(--line);font:inherit">
-        <input id="newName" placeholder="Name" style="width:200px;padding:9px 12px;border-radius:12px;border:1px solid var(--line);font:inherit">
-        <select id="newKind" style="padding:9px;border-radius:12px;border:1px solid var(--line);font:inherit"><option value="health">Health</option><option value="food">Food</option><option value="fitness">Fitness</option><option value="general">General</option></select>
+        <input id="newDom" placeholder="Website address, eg bda.uk.com" style="${inp};flex:1;min-width:180px">
+        <input id="newName" placeholder="Name" style="${inp};width:200px">
+        <select id="newKind" style="${inp}"><option value="health">Health</option><option value="food">Food</option><option value="fitness">Fitness</option><option value="general">General</option></select>
         <button class="btn" style="padding:9px 18px" onclick="libSite($('#newDom').value,$('#newName').value,$('#newKind').value,true)">Add site</button></div>
-      <div class="small" style="margin-top:8px">Only add trusted sites. The scraper also obeys each site’s robots.txt.</div></div>`;
-  }
+      <div class="small" style="margin-top:8px">Only add trusted sites. The scraper also obeys each site’s robots.txt.</div>`;
+  const live = lib.jobs.filter((j) => lib.running[j.id] || j.status === 'running').length;
   m.innerHTML = head('Library', 'Web pages turned into notes in our own words. Nothing is used until you approve it.') +
     (lib.msg ? `<div class="err" style="margin-bottom:12px">${esc(lib.msg)}</div>` : '') +
-    `<div class="kpis">${kpi('To check', fmt(o.to_check), 'waiting for you')}${kpi('Approved', fmt(o.approved), Object.entries(o.by_type || {}).map(([k, v]) => `${v} ${TYPES[k].toLowerCase()}`).join(' · ') || 'none yet')}
-      ${kpi('Needs clinician', fmt(o.needs_clinician), 'approved health notes')}${kpi('Spent', '$' + Number(o.spend_usd || 0).toFixed(2), 'on DeepSeek, all time')}</div>
-    <div class="tabs" style="margin-top:14px">${tabs.map(([k, l]) => `<button class="${lib.tab === k ? 'on' : ''}" onclick="lib.tab='${k}';lib.msg='';render()">${l}</button>`).join('')}</div>` + body;
+    `<div class="kpis">${kpi('To check', fmt(o.to_check), 'waiting for you')}${kpi('Approved', fmt(o.approved), 'across all sections')}
+      ${kpi('Needs clinician', fmt(o.needs_clinician), 'approved health notes')}${kpi('Spent', '$' + Number(o.spend_usd || 0).toFixed(2), 'on DeepSeek, all time')}</div>` +
+    SECTIONS.map(section).join('') +
+    `<div style="height:10px"></div>` +
+    fold('lib-jobs', 'var(--faint)', 'Scrapes', live ? `${live} running now` : 'Progress and cost of each run', fmt(lib.jobs.length), '', jobs) +
+    fold('lib-sites', 'var(--faint)', 'Trusted sites', 'The only sites the scraper may read', fmt(allowed.length), '', sites);
 }
 function libData(i) {
   const d = i.data || {};
@@ -569,23 +586,25 @@ async function libSite(domain, name, kind, allowed) {
   if (error) return libSay(error.message.includes('website') ? 'That doesn’t look like a website address.' : 'Could not save the site. Try again.');
   libLoad();
 }
-async function libFind(btn) {
-  if (!lib.site) return libSay('Pick a site first.');
+async function libFind(btn, k) {
+  const f = libForm(k);
+  if (!f.site) return libSay('Pick a site first.');
   btn.disabled = true; btn.textContent = 'Looking…';
-  const { data: r, error } = await SB.functions.invoke('library-scrape', { body: { action: 'find', domain: lib.site, words: lib.words } });
+  const { data: r, error } = await SB.functions.invoke('library-scrape', { body: { action: 'find', domain: f.site, words: f.words } });
   btn.disabled = false; btn.textContent = 'Find pages';
   if (error || r?.error) return libSay(r?.error || 'Could not read that site’s page list. Paste links instead.');
   if (!r.links.length) return libSay('No pages matched those words. Try fewer or different words.');
-  lib.links = [...new Set([...lib.links.split('\n').map((x) => x.trim()).filter(Boolean), ...r.links])].join('\n');
+  f.links = [...new Set([...f.links.split('\n').map((x) => x.trim()).filter(Boolean), ...r.links])].join('\n');
   lib.msg = `Found ${r.links.length} pages. Remove any you don’t want, then press Start scrape.`; render();
 }
-async function libStart(btn) {
-  const urls = lib.links.split('\n').map((x) => x.trim()).filter(Boolean);
+async function libStart(btn, k) {
+  const f = libForm(k), urls = f.links.split('\n').map((x) => x.trim()).filter(Boolean);
+  if (!f.topic.trim()) return libSay('Add a topic first.');
   btn.disabled = true;
-  const { data: id, error } = await SB.rpc('admin_lib_create_job', { p_topic: lib.topic, p_type: lib.type, p_urls: urls });
+  const { data: id, error } = await SB.rpc('admin_lib_create_job', { p_topic: (k === 'general' ? GEN : '') + f.topic.trim(), p_type: f.type, p_urls: urls });
   btn.disabled = false;
   if (error) return libSay(error.message.includes('topic') ? 'Add a topic first.' : error.message.includes('link') ? 'Add at least one web link (starting https://).' : 'Could not start the scrape. Try again.');
-  lib.topic = ''; lib.links = ''; lib.tab = 'jobs'; lib.msg = '';
+  f.topic = ''; f.links = ''; f.sub = 'check'; openSet.add('lib-jobs'); lib.msg = '';
   await libLoad(); libRun(id);
 }
 async function libRun(id) {
