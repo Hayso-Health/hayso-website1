@@ -374,9 +374,21 @@ function render() {
   }
   if (view === 'library') return libRender(m);
   if (view === 'chats') {
-    m.innerHTML = head('hayso chats', 'What people ask hayso in the app, newest first') + `
-      <div class="panel glass">${data.chats.map((c) => `<div class="chat"><div class="small">${when(c.created_at)} · user ${short(c.user_id)}${c.route && c.route !== 'allowed' ? ` · <span class="chip">${esc(c.route)}</span>` : ''}</div>
-        <div class="q">${esc(c.message)}</div>${c.reply ? `<div class="a">hayso: ${esc(c.reply)}</div>` : ''}</div>`).join('') || '<div class="empty">No chats yet</div>'}</div>`;
+    // grouped like feedback: questions hayso turned away first, then by topic. One line each, tap to read the reply.
+    const names = {}; data.fb.forEach((x) => { if (x.label) names[x.user_id] = x.label; });
+    const person = (id) => names[id] || 'user ' + short(id);
+    const groups = [['blocked', 'Questions hayso turned away', 'var(--warn)', 'Medicine, symptoms or urgent. Worth a look'], ...TOPICS.map((t) => [t[0], t[1], t[2], '']), ['other', 'Everything else', 'linear-gradient(135deg,#E6E3DD,#C9C4BC)', '']];
+    const keyOf = (c) => c.route && c.route !== 'allowed' ? 'blocked' : topicOf({ text: c.message });
+    const item = (c, i) => { const k = 'c-' + (c.id ?? c.created_at + i), on = openSet.has(k);
+      return `<div class="fbi${on ? ' open' : ''}"><div class="fbi-h" onclick="tog('${k}')">
+        ${c.route && c.route !== 'allowed' ? `<span class="chip">${esc(c.route)}</span>` : ''}<span class="txt">${esc(c.message)}</span>
+        <span class="small" style="white-space:nowrap">${esc(person(c.user_id))} · ${when(c.created_at)}</span>${chev}</div>
+        ${on ? `<div class="fbi-b"><div class="a" style="margin-top:0">hayso: ${esc(c.reply || '(no reply)')}</div></div>` : ''}</div>`; };
+    m.innerHTML = head('hayso chats', `${fmt(data.chats.length)} questions, newest first`) +
+      (groups.map(([k, title, dot, sub]) => { const list = data.chats.filter((c) => keyOf(c) === k); if (!list.length) return '';
+        return fold('ch-' + k, dot, title, sub || `Last asked ${ago(list[0].created_at)}`, fmt(list.length), '',
+          list.slice(0, showN['ch-' + k] || 5).map(item).join('') + moreBtn('ch-' + k, list.length)); }).join('')
+      || '<div class="panel glass empty">No chats yet</div>');
   }
 }
 // one feedback item: a single line, tap to open the detail and AI help
