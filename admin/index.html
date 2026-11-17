@@ -393,14 +393,12 @@ function render() {
   }
 }
 function overviewBasic(m, o, note) {
-    const subs = o.subs || {}, paying = (subs.monthly || 0) + (subs.annual || 0);
     const days = o.daily || [], max = Math.max(1, ...days.map((d) => d.active), ...days.map((d) => d.signups));
     const realFb = data.fb.filter((x) => !noise(x));
     m.innerHTML = head('Overview', 'Updated ' + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })) + (note || '') + `
       <div class="kpis">
         ${kpi('Total users', fmt(o.users), `+${fmt(o.users_7d)} this week`)}
         ${kpi('Active today', fmt(o.active_today), `${fmt(o.active_7d)} this week · ${fmt(o.active_30d)} this month`)}
-        ${kpi('Paying subscribers', fmt(paying), `${fmt(subs.trial || 0)} on trial · ${fmt(subs.clinic || 0)} via clinics`)}
         ${kpi('New feedback', fmt(realFb.filter((x) => x.status === 'new').length), `${fmt(realFb.length)} in total`)}
         ${kpi('Finished setup', fmt(o.onboarded), `of ${fmt(o.users)} sign-ups`)}
         ${kpi('hayso chats', fmt(o.hayso_msgs_7d), `this week · ${fmt(o.hayso_msgs)} in total`)}
@@ -422,11 +420,10 @@ function overviewBasic(m, o, note) {
   }
 
 // ---------- Overview: the business and in-app insights dashboard (17 Nov) ----------
-// People, money, usage, funnels, retention. Money is an estimate from list prices until RevenueCat is connected.
+// People, usage, funnels, retention. No money here: revenue goes in once RevenueCat gives real figures (George, 17 Nov).
 let insDays = 14;
 async function insLoad(n) { insDays = n; const r = await SB.rpc('admin_insights', { p_days: n }); if (!r.error) data.ins = r.data; render(); }
 const pct = (a, b) => (b ? Math.round((a / b) * 100) : 0);
-const gbp = (v) => '£' + Number(v || 0).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const dd = (d) => new Date(d).getDate();
 function lineChart(vals, labels, id, tip) {
   const W = 600, H = 170, n = vals.length, max = Math.max(1, ...vals), min = Math.min(...vals), lo = min === max ? 0 : Math.max(0, min - (max - min) * 0.15);
@@ -456,8 +453,8 @@ const PAGE = { '/': 'Home', '/support': 'Support', '/progress': 'Progress', '/co
   '/check-in': 'Weekly check-in', '/plan': 'My plan (treatment)', '/settings': 'Settings', '/coach': 'hayso chat', '/help': 'Urgent help', '/paywall': 'Paywall', '/welcome': 'Welcome (first run)' };
 const pageName = (n) => PAGE[n] || n;
 function insRender(m) {
-  const o = data.o, x = data.ins, subs = x.subs || o.subs || {}, paying = (subs.monthly || 0) + (subs.annual || 0);
-  const g = x.growth || [], dly = x.daily || [], mrr = Number(x.mrr_est || 0);
+  const x = data.ins;
+  const g = x.growth || [], dly = x.daily || [], today = dly[dly.length - 1] || {};
   const churn = x.churn || { of: 0, lost: 0 }, b1 = x.back_next_day || { of: 0, back: 0 }, b7 = x.back_week || { of: 0, back: 0 };
   const newN = g.reduce((a, d) => a + d.signups, 0), maxU = Math.max(1, ...dly.map((d) => d.users));
   const realFb = data.fb.filter((f) => !noise(f)), hrs = x.hours || [], maxH = Math.max(1, ...hrs.map((h) => h.n));
@@ -465,14 +462,14 @@ function insRender(m) {
   const sec = (t, sub) => `<div class="sec"><h2>${t}</h2>${sub ? `<span class="small">${sub}</span>` : ''}</div>`;
   m.innerHTML = `<div class="top"><h1>Overview</h1>${range}<span class="small">Updated ${new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span><button class="btn ghost" onclick="load()" style="padding:8px 16px">Refresh</button></div>
     <div class="kpis">
-      ${kpi('Total users', fmt(x.total_users ?? o.users), `+${fmt(newN)} in ${x.days} days`)}
-      ${kpi('Active today', fmt(o.active_today), `${fmt(o.active_7d)} this week · ${fmt(o.active_30d)} this month`)}
-      ${kpi('Paying subscribers', fmt(paying), `${fmt(subs.trial || 0)} on trial · ${fmt(subs.clinic || 0)} via clinics`)}
-      ${kpi('Monthly recurring revenue', gbp(mrr), 'Estimate from list prices')}
-      ${kpi('Annual recurring revenue', gbp(mrr * 12), 'MRR × 12')}
+      ${kpi('Total users', fmt(x.total_users), 'everyone who has signed up')}
+      ${kpi('New sign-ups', fmt(newN), `in the last ${x.days} days`)}
+      ${kpi('On the app today', fmt(today.users || 0), `${fmt(today.screens || 0)} page views today`)}
+      ${kpi('On the app this period', fmt(x.users), `${x.avg_days_per_user ?? 0} days each, on average`)}
+      ${kpi('Page views', fmt(x.screens), `in the last ${x.days} days`)}
+      ${kpi('Logs and taps', fmt(x.actions_n), 'meals, water, workouts and more')}
       ${kpi('Churn', churn.of ? pct(churn.lost, churn.of) + '%' : '–', churn.of ? `${fmt(churn.lost)} of ${fmt(churn.of)} stopped opening the app` : 'Needs 2 weeks of use')}
       ${kpi('Came back next day', b1.of ? pct(b1.back, b1.of) + '%' : '–', b1.of ? `${fmt(b1.back)} of ${fmt(b1.of)} new people` : 'No new people yet')}
-      ${kpi('Finished setup', fmt(o.onboarded), `of ${fmt(o.users)} sign-ups`)}
     </div>
 
     ${sec('Growth', `Last ${x.days} days`)}
@@ -484,14 +481,6 @@ function insRender(m) {
           <div class="stack" style="height:${(d.users / maxU) * 130}px"><i style="flex:${d.android || 0};background:var(--pink)"></i><i style="flex:${d.ios || 0};background:var(--lilac)"></i><i style="flex:${Math.max(0, d.users - d.ios - d.android)};background:var(--blue)"></i></div>
           <span>${dd(d.day)}</span></div>`).join('')}</div>
         <div class="legend"><span><i style="background:var(--lilac)"></i>iPhone</span><span><i style="background:var(--pink)"></i>Android</span><span><i style="background:var(--blue)"></i>Other</span></div></div>
-    </div>
-
-    ${sec('Money', 'Estimate until RevenueCat is connected')}
-    <div class="grid2e">
-      <div class="panel glass"><h2>Subscriptions</h2>${hbars([['Monthly (£9.99)', subs.monthly || 0], ['Annual (£54.99)', subs.annual || 0], ['On free trial', subs.trial || 0], ['Via a clinic', subs.clinic || 0], ['Not subscribed', subs.none || 0]], 'linear-gradient(90deg,var(--lilac),var(--pink))')}</div>
-      <div class="panel glass"><h2>Revenue</h2>
-        <div class="money"><div><div class="small">Monthly recurring</div><b>${gbp(mrr)}</b></div><div><div class="small">Annual recurring</div><b>${gbp(mrr * 12)}</b></div><div><div class="small">Turnover to date</div><b>–</b></div></div>
-        <div class="small" style="margin-top:12px">Real payments, refunds, trial conversions and turnover come from RevenueCat. They show here once the RevenueCat key is added.</div></div>
     </div>
 
     ${sec('How people use the app', `${fmt(x.users)} people · ${fmt(x.screens)} page views · ${fmt(x.actions_n)} logs and taps`)}
