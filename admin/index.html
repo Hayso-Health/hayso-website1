@@ -170,7 +170,7 @@ tr:last-child td{border-bottom:0}
     <button class="nav" data-v="usage">Usage</button>
     <button class="nav" data-v="chats">hayso chats</button>
     <button class="nav" data-v="library">Library <span class="n" id="libN" style="display:none"></span></button>
-    <div class="foot"><div class="small" id="who"></div><a href="#" id="signout" class="small">Sign out</a></div>
+    <div class="foot"><div class="small" id="who"></div><a href="#" id="changepw" class="small">Change password</a> · <a href="#" id="signout" class="small">Sign out</a></div>
   </aside>
   <main id="main"></main>
 </section>
@@ -207,19 +207,31 @@ $('#setpw').onsubmit = async (e) => {
   e.preventDefault();
   const { error } = await SB.auth.updateUser({ password: $('#pw1').value });
   if (error) return showErr($('#setErr'), error.message);
+  recovering = false;
+  $('#setpw').style.display = 'none'; $('#signin').style.display = '';
+  $('#loginTitle').textContent = 'Sign in'; $('#loginSub').textContent = 'App management for the Hayso team.';
   history.replaceState(null, '', location.pathname); start();
 };
 $('#signout').onclick = async (e) => { e.preventDefault(); await SB.auth.signOut(); location.reload(); };
+// Reset link (20 Nov fix): it used to sign you straight in and never ask for a new password, so the old one never changed.
+// Now a reset link always stops on "Set your password" first, and you can also change it any time from the sidebar.
+let recovering = /type=recovery/.test(location.hash + location.search);
+function askNewPassword(title, sub) {
+  recovering = true;
+  $('#app').style.display = 'none'; $('#login').style.display = '';
+  $('#signin').style.display = 'none'; $('#setpw').style.display = 'block';
+  $('#loginTitle').textContent = title; $('#loginSub').textContent = sub;
+  $('#pw1').value = ''; $('#pw1').focus();
+}
 SB.auth.onAuthStateChange((ev) => {
-  if (ev === 'PASSWORD_RECOVERY') {
-    $('#signin').style.display = 'none'; $('#setpw').style.display = 'block';
-    $('#loginTitle').textContent = 'Set your password'; $('#loginSub').textContent = 'Pick a password for the admin dashboard.';
-  }
+  if (ev === 'PASSWORD_RECOVERY') askNewPassword('Set your password', 'Pick a new password. You’ll use it to sign in from now on.');
 });
+if (recovering) askNewPassword('Set your password', 'Pick a new password. You’ll use it to sign in from now on.');
+$('#changepw').onclick = (e) => { e.preventDefault(); askNewPassword('Change your password', 'Pick a new password. You’ll use it to sign in from now on.'); };
 
 async function start() {
   const { data: s } = await SB.auth.getSession();
-  if (!s.session) return;
+  if (!s.session || recovering) return;
   const { data: ok } = await SB.rpc('is_app_admin');
   if (!ok) { await SB.auth.signOut(); return showErr($('#loginErr'), 'This account doesn’t have admin access.'); }
   $('#login').style.display = 'none'; $('#app').style.display = 'block';
